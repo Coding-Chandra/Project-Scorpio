@@ -1,0 +1,75 @@
+/* ============================================================================
+ * NOTOZ – Capacitor Native CSS Overrides
+ * ============================================================================
+ * Hardened for Android & iOS:
+ *   - True Edge-to-Edge: content & wallpapers draw behind status/nav bars
+ *   - Seamless gesture navigation without touch-action interference
+ *   - Keyboard-aware layout shifts
+ * ============================================================================ */
+
+/* ── Only apply when running in Capacitor ─────────────────────────────────── */
+html.capacitor-native {
+  /* Prevent rubber-band / overscroll on Android WebView */
+  overscroll-behavior: none;
+
+  /* Safe area custom properties for components that specifically need insets */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+  --keyboard-height: 0px;
+}
+
+html.capacitor-native body {
+  /* Draw 100% Edge-to-Edge behind status bar and navigation bar */
+  margin: 0 !important;
+  padding: 0 !important;
+  overscroll-behavior-y: contain;
+}
+
+/* ── Keyboard visible: shrink bottom elements ─────────────────────────────── */
+html.capacitor-native body.keyboard-visible .bottom-nav,
+html.capacitor-native body.keyboard-visible .bottom-bar,
+html.capacitor-native body.keyboard-visible .legal-footer {
+  display: none !important;
+}
+
+/* ── Android tap feedback ─────────────────────────────────────────────────── */
+html.capacitor-native * {
+  -webkit-tap-highlight-color: rgba(255, 255, 255, 0.05);
+}
+
+html.capacitor-native button,
+html.capacitor-native a,
+html.capacitor-native [role="button"] {
+  -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ── Prevent accidental text selection on UI elements ─────────────────────── */
+html.capacitor-native button,
+html.capacitor-native nav,
+html.capacitor-native .top-nav,
+html.capacitor-native header,
+html.capacitor-native .bottom-nav,
+html.capacitor-native .sidebar {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ── Allow text selection in note content ─────────────────────────────────── */
+html.capacitor-native .note-content,
+html.capacitor-native [contenteditable],
+html.capacitor-native input,
+html.capacitor-native textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* ── Smooth scrolling in all scrollable containers ────────────────────────── */
+html.capacitor-native .notes-list,
+html.capacitor-native .note-content,
+html.capacitor-native .settings-content,
+html.capacitor-native main {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}

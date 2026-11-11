@@ -160,21 +160,30 @@
 
 /* ── 4. TELEMETRY HUD OVERLAY ────────────────────────────────────────────── */
 .hfr-telemetry-hud {
-  position: fixed;
-  top: max(env(safe-area-inset-top, 16px), 16px);
+  position: fixed !important;
+  top: max(var(--safe-area-top, 0px), env(safe-area-inset-top, 0px), 16px);
   right: 16px;
-  z-index: 10090;
-  background: rgba(18, 18, 20, 0.88);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 16px;
-  padding: 12px 14px;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Roboto", sans-serif;
-  color: #ffffff;
-  min-width: 200px;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
-  pointer-events: auto;
+  z-index: 2147483647 !important;
+  background: rgba(18, 18, 20, 0.92) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 16px !important;
+  padding: 12px 14px !important;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Roboto", sans-serif !important;
+  color: #ffffff !important;
+  min-width: 200px !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6) !important;
+  pointer-events: auto !important;
+  touch-action: none !important;
+  display: block !important;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.hfr-hud-close-btn:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.15) !important;
 }
 
 .hfr-hud-badge {

@@ -82,6 +82,14 @@ public class MainActivity extends BridgeActivity {
                 settings.setDomStorageEnabled(true);
                 settings.setDatabaseEnabled(true);
                 settings.setAllowFileAccess(true);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    settings.setOffscreenPreRaster(true);
+                }
+                settings.setGeolocationEnabled(false);
+
+                try {
+                    android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(webView, false);
+                } catch (Exception ignored) {}
 
                 // ── JavaScript ──
                 settings.setJavaScriptEnabled(true);

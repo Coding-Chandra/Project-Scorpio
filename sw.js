@@ -1,4 +1,4 @@
-const CACHE_NAME = 'notoj-app-v2.4.550';
+const CACHE_NAME = 'notoj-app-v2.4.551';
 const BASE = self.registration.scope;
 const urlsToCache = [
   './',
@@ -11,13 +11,21 @@ const urlsToCache = [
   'app/src/css/md3e-app.css',
   'app/src/css/nthng.css',
   'app/src/css/settings.css',
+  'app/src/css/animations.css',
+  'app/src/css/lf-ui.css',
 
   // JS
   'app/src/js/app.js',
+  'app/src/js/dev-logs.js',
   'app/src/js/settings.js',
   'app/src/js/md3e-enhance.js',
   'app/src/js/cache-update.js',
   'app/src/js/offline-sync.js',
+  'app/src/js/lf-engine.js',
+  'app/src/js/lf-ui.js',
+  'app/src/js/animation-utils.js',
+  'app/src/js/security-monitor.js',
+  'vendor/supabase.min.js',
 
   // Fonts
   'app/src/assets/fonts/SFR.ttf',

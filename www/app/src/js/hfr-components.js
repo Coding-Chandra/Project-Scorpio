@@ -13,11 +13,13 @@
 (function (global) {
   'use strict';
 
-  const HFRMotion = global.HFRMotion;
-  if (!HFRMotion) {
-    console.error('[HFRComponents] HFRMotion engine required.');
-    return;
-  }
+  const resolveHFRMotion = () => global.HFRMotion || (typeof window !== 'undefined' ? window.HFRMotion : null);
+  const HFRMotion = new Proxy({}, {
+    get(target, prop) {
+      const engine = resolveHFRMotion();
+      return engine ? engine[prop] : undefined;
+    }
+  });
 
   // ── 1. HFR INTERACTIVE BOTTOM SHEET ───────────────────────────────────────
   class HFRInteractiveSheet {
@@ -351,18 +353,53 @@
       this.frameTimeEl = null;
       this.dropsEl = null;
       this.intervalId = 0;
+      this.rafId = 0;
       this.isVisible = false;
+      this._boundTouchMove = null;
+      this._boundTouchEnd = null;
+      this._boundMouseMove = null;
+      this._boundMouseEnd = null;
     }
 
-    mount(container = document.body) {
-      if (this.hudEl) return;
+    mount(container = null) {
+      if (this.hudEl && this.hudEl.parentNode) {
+        this.hudEl.style.display = 'block';
+        this.isVisible = true;
+        this._startMonitoring();
+        return;
+      }
+
+      if (!container) {
+        container = typeof document !== 'undefined' ? document.body : null;
+      }
+      if (!container) {
+        if (typeof document !== 'undefined') {
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.mount());
+          } else {
+            setTimeout(() => this.mount(), 50);
+          }
+        }
+        return;
+      }
+
+      // Clean up any stale or orphaned HUD overlays in DOM
+      const existingHud = document.querySelector('.hfr-telemetry-hud');
+      if (existingHud && existingHud !== this.hudEl) {
+        existingHud.remove();
+      }
 
       this.hudEl = document.createElement('div');
       this.hudEl.className = 'hfr-telemetry-hud hfr-gpu-layer';
+      this.hudEl.setAttribute('role', 'region');
+      this.hudEl.setAttribute('aria-label', 'Performance Telemetry HUD');
       this.hudEl.innerHTML = `
-        <div class="hfr-hud-badge">
-          <div class="hfr-hud-dot"></div>
-          <span class="hfr-hud-title">120/144Hz ProMotion Engine</span>
+        <div class="hfr-hud-badge" style="cursor: move; user-select: none; display: flex; align-items: center; justify-content: space-between;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div class="hfr-hud-dot"></div>
+            <span class="hfr-hud-title">120/144Hz ProMotion</span>
+          </div>
+          <button class="hfr-hud-close-btn" type="button" aria-label="Close HUD" title="Close HUD (manage in Dev Options)" style="background: none; border: none; color: rgba(255, 255, 255, 0.7); font-size: 16px; font-weight: bold; cursor: pointer; padding: 2px 6px; line-height: 1;">✕</button>
         </div>
         <div class="hfr-hud-grid">
           <div class="hfr-hud-metric">
@@ -395,27 +432,149 @@
       this.frameTimeEl = this.hudEl.querySelector('.hfr-val-time');
       this.dropsEl = this.hudEl.querySelector('.hfr-val-drops');
 
+      const closeBtn = this.hudEl.querySelector('.hfr-hud-close-btn');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          if (typeof window.setHfrHudEnabled === 'function') {
+            window.setHfrHudEnabled(false);
+          } else {
+            localStorage.setItem('notozApp_hfr_hud_enabled', 'false');
+            window.dispatchEvent(new CustomEvent('hfr-hud-changed', { detail: { enabled: false } }));
+            this.destroy();
+          }
+        });
+      }
+
+      this._setupDraggable();
       this.isVisible = true;
       this._startMonitoring();
     }
 
+    _setupDraggable() {
+      const badge = this.hudEl.querySelector('.hfr-hud-badge');
+      if (!badge) return;
+
+      let dragging = false;
+      let startX = 0, startY = 0;
+      let startLeft = 0, startTop = 0;
+
+      const onStart = (clientX, clientY) => {
+        dragging = true;
+        startX = clientX;
+        startY = clientY;
+        const rect = this.hudEl.getBoundingClientRect();
+        startLeft = rect.left;
+        startTop = rect.top;
+      };
+
+      const onMove = (clientX, clientY) => {
+        if (!dragging || !this.hudEl) return;
+        const dx = clientX - startX;
+        const dy = clientY - startY;
+        const maxLeft = window.innerWidth - this.hudEl.offsetWidth - 8;
+        const maxTop = window.innerHeight - this.hudEl.offsetHeight - 8;
+        this.hudEl.style.left = `${Math.max(8, Math.min(maxLeft, startLeft + dx))}px`;
+        this.hudEl.style.top = `${Math.max(8, Math.min(maxTop, startTop + dy))}px`;
+        this.hudEl.style.right = 'auto';
+      };
+
+      const onEnd = () => {
+        dragging = false;
+      };
+
+      badge.addEventListener('touchstart', (e) => {
+        if (e.target.closest('.hfr-hud-close-btn')) return;
+        const touch = e.touches[0];
+        onStart(touch.clientX, touch.clientY);
+      }, { passive: true });
+
+      this._boundTouchMove = (e) => {
+        if (!dragging) return;
+        const touch = e.touches[0];
+        onMove(touch.clientX, touch.clientY);
+      };
+      window.addEventListener('touchmove', this._boundTouchMove, { passive: true });
+
+      this._boundTouchEnd = onEnd;
+      window.addEventListener('touchend', this._boundTouchEnd, { passive: true });
+
+      badge.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.hfr-hud-close-btn')) return;
+        onStart(e.clientX, e.clientY);
+      });
+
+      this._boundMouseMove = (e) => {
+        if (!dragging) return;
+        onMove(e.clientX, e.clientY);
+      };
+      window.addEventListener('mousemove', this._boundMouseMove);
+
+      this._boundMouseEnd = onEnd;
+      window.addEventListener('mouseup', this._boundMouseEnd);
+    }
+
     _startMonitoring() {
+      let lastTime = performance.now();
+      let frames = 0;
+      let lastFpsUpdate = lastTime;
+      let liveFps = 60;
+      let liveDt = 16.67;
+      let droppedCount = 0;
+
+      const requestFrame = (cb) => {
+        if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+          return window.requestAnimationFrame(cb);
+        }
+        if (typeof requestAnimationFrame === 'function') {
+          return requestAnimationFrame(cb);
+        }
+        return setTimeout(() => cb(performance.now()), 16);
+      };
+
+      const onFrame = (now) => {
+        if (!this.isVisible || !this.hudEl) return;
+        const delta = now - lastTime;
+        lastTime = now;
+        liveDt = delta;
+
+        const refreshRate = (window.HFRMotion && window.HFRMotion.getTelemetry().detectedRefreshRate) ||
+                            (liveFps > 100 ? 120 : (liveFps > 75 ? 90 : 60));
+        const expectedDt = 1000 / refreshRate;
+        if (delta > expectedDt * 1.45 && delta > 10) {
+          droppedCount++;
+        }
+
+        frames++;
+        if (now - lastFpsUpdate >= 500) {
+          liveFps = Math.round((frames * 1000) / (now - lastFpsUpdate));
+          frames = 0;
+          lastFpsUpdate = now;
+        }
+
+        this.rafId = requestFrame(onFrame);
+      };
+
+      this.rafId = requestFrame(onFrame);
+
       this.intervalId = setInterval(() => {
         if (!this.isVisible || !this.hudEl) return;
-        const data = HFRMotion.getTelemetry();
+        const motionTelemetry = window.HFRMotion ? window.HFRMotion.getTelemetry() : null;
+        const rate = (motionTelemetry && motionTelemetry.detectedRefreshRate) || (liveFps > 100 ? 120 : (liveFps > 75 ? 90 : 60));
 
-        this.fpsEl.textContent = data.fps;
-        this.rateEl.textContent = data.detectedRefreshRate ? data.detectedRefreshRate + ' Hz' : '-- Hz';
-        this.frameTimeEl.textContent = data.frameTimeMs.toFixed(2) + ' ms';
-        this.dropsEl.textContent = data.droppedFrames;
+        this.fpsEl.textContent = liveFps;
+        this.rateEl.textContent = rate ? rate + ' Hz' : '-- Hz';
+        this.frameTimeEl.textContent = liveDt.toFixed(2) + ' ms';
+        this.dropsEl.textContent = (motionTelemetry ? motionTelemetry.droppedFrames : 0) + droppedCount;
 
-        // Visual alert if frame budget is exceeded
-        if (data.frameTimeMs > 10.0 && data.detectedRefreshRate >= 120) {
+        const targetBudget = rate >= 120 ? 8.33 : (rate >= 90 ? 11.11 : 16.67);
+        if (liveDt > targetBudget * 1.25) {
           this.frameTimeEl.style.color = '#ff453a';
         } else {
           this.frameTimeEl.style.color = '#30d158';
         }
-      }, 250);
+      }, 200);
     }
 
     toggle() {
@@ -424,17 +583,95 @@
       } else {
         this.isVisible = !this.isVisible;
         this.hudEl.style.display = this.isVisible ? 'block' : 'none';
+        if (this.isVisible) this._startMonitoring();
+        else {
+          if (this.rafId) {
+            if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this.rafId);
+            else if (typeof window !== 'undefined' && window.cancelAnimationFrame) window.cancelAnimationFrame(this.rafId);
+          }
+          if (this.intervalId) clearInterval(this.intervalId);
+        }
       }
     }
 
     destroy() {
-      if (this.intervalId) clearInterval(this.intervalId);
+      this.isVisible = false;
+      if (this.rafId) {
+        if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this.rafId);
+        else if (typeof window !== 'undefined' && window.cancelAnimationFrame) window.cancelAnimationFrame(this.rafId);
+        this.rafId = 0;
+      }
+      if (this.intervalId) {
+        clearInterval(this.intervalId);
+        this.intervalId = 0;
+      }
+      if (typeof window !== 'undefined' && typeof window.removeEventListener === 'function') {
+        if (this._boundTouchMove) window.removeEventListener('touchmove', this._boundTouchMove);
+        if (this._boundTouchEnd) window.removeEventListener('touchend', this._boundTouchEnd);
+        if (this._boundMouseMove) window.removeEventListener('mousemove', this._boundMouseMove);
+        if (this._boundMouseEnd) window.removeEventListener('mouseup', this._boundMouseEnd);
+      }
+
       if (this.hudEl && this.hudEl.parentNode) {
         this.hudEl.parentNode.removeChild(this.hudEl);
       }
       this.hudEl = null;
     }
   }
+
+  // ── HUD AUTO-SYNC CONTROLLER ──────────────────────────────────────────────
+  let activeHudInstance = null;
+
+  function syncGlobalHud() {
+    let isEnabled = false;
+    try {
+      if (typeof window.isHfrHudEnabled === 'function') {
+        isEnabled = window.isHfrHudEnabled();
+      } else {
+        isEnabled = localStorage.getItem('notozApp_hfr_hud_enabled') === 'true';
+      }
+    } catch (e) {
+      isEnabled = false;
+    }
+
+    if (isEnabled) {
+      if (!activeHudInstance) {
+        activeHudInstance = new HFRTelemetryHUD();
+      }
+      activeHudInstance.mount();
+      if (activeHudInstance.hudEl) {
+        activeHudInstance.hudEl.style.display = 'block';
+        activeHudInstance.isVisible = true;
+      }
+    } else {
+      if (activeHudInstance) {
+        activeHudInstance.destroy();
+        activeHudInstance = null;
+      }
+      const existing = document.querySelector('.hfr-telemetry-hud');
+      if (existing) existing.remove();
+    }
+  }
+
+  global.__NOTOZ_SYNC_HUD = syncGlobalHud;
+  global.addEventListener('hfr-hud-changed', syncGlobalHud);
+  global.addEventListener('developer-options-changed', syncGlobalHud);
+  global.addEventListener('storage', (e) => {
+    if (e.key === 'notozApp_hfr_hud_enabled' || e.key === 'notozApp_developer_mode') {
+      syncGlobalHud();
+    }
+  });
+
+  if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => syncGlobalHud());
+    }
+    setTimeout(syncGlobalHud, 10);
+    setTimeout(syncGlobalHud, 100);
+    setTimeout(syncGlobalHud, 400);
+    setTimeout(syncGlobalHud, 1200);
+  }
+  global.addEventListener('load', () => syncGlobalHud());
 
   // ── EXPORTS ───────────────────────────────────────────────────────────────
   global.HFRInteractiveSheet = HFRInteractiveSheet;

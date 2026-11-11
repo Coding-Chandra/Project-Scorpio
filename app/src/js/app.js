@@ -960,7 +960,7 @@ const app = {
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (!session || !session.user) {
             console.warn('No active session found. Redirecting to login.');
-            window.location.href = '../index.html';
+            window.location.replace('../index.html');
             return;
         }
 
@@ -1007,16 +1007,18 @@ const app = {
         this._setupEventListeners();
         BackHandler.init();
 
-        // Hide loading state with smooth transition
-        setTimeout(() => {
-            this.loading.stopProgress();
-            this.loading.setProgress(100);
-            setTimeout(() => {
-                this.loading.hide();
-                // Add fade-in animation to content
-                document.getElementById('app').classList.add('content-fade-in');
-            }, 200);
-        }, 100);
+        // Hide loading state immediately
+        this.loading.stopProgress();
+        this.loading.setProgress(100);
+        this.loading.hide();
+        document.getElementById('app')?.classList.add('content-fade-in');
+
+        // Dismiss native splash screen immediately when local UI is mounted
+        if (window.__NOTOZ_CAPACITOR && window.__NOTOZ_CAPACITOR.hideSplash) {
+            window.__NOTOZ_CAPACITOR.hideSplash();
+        } else if (typeof window.__NOTOZ_HIDE_SPLASH === 'function') {
+            window.__NOTOZ_HIDE_SPLASH();
+        }
     },
 
     async handleLogout() {
@@ -1160,42 +1162,47 @@ const app = {
     // ========================================================================
 
     async loadFolders() {
-        // Folders are small — cache them in localStorage for offline use
-        if (!isOnline()) {
-            try {
-                const cached = localStorage.getItem('notozApp_folders_' + CURRENT_USER_ID);
-                this.folders = cached ? JSON.parse(cached) : [];
-                console.log('[Offline] Loaded folders from localStorage');
-            } catch (e) {
-                this.folders = [];
-            }
-            return;
-        }
-
-        const { data, error } = await supabaseClient
-            .from(FOLDERS_TABLE)
-            .select('*')
-            .eq('user_id', CURRENT_USER_ID)
-            .order('created_at', { ascending: true });
-
-        if (error) {
-            console.error('Error loading folders:', error);
-            // Fallback to localStorage cache
-            try {
-                const cached = localStorage.getItem('notozApp_folders_' + CURRENT_USER_ID);
-                this.folders = cached ? JSON.parse(cached) : [];
-            } catch (e) {
-                this.folders = [];
-            }
-            return;
-        }
-
-        this.folders = data || [];
-        // Mirror folders to localStorage for offline access
+        // Fast Path: Always load cached folders immediately from localStorage
         try {
-            localStorage.setItem('notozApp_folders_' + CURRENT_USER_ID, JSON.stringify(this.folders));
+            const cached = localStorage.getItem('notozApp_folders_' + CURRENT_USER_ID);
+            this.folders = cached ? JSON.parse(cached) : [];
+            console.log('[Startup] Loaded cached folders from localStorage:', this.folders.length);
         } catch (e) {
-            console.warn('[Offline] Could not cache folders in localStorage:', e);
+            this.folders = [];
+        }
+
+        // Render immediately with cached folders
+        if (this.folders.length > 0) {
+            this.renderFolders();
+        }
+
+        // If online, revalidate in background without blocking startup
+        if (isOnline()) {
+            this.syncFoldersFromServer();
+        }
+    },
+
+    async syncFoldersFromServer() {
+        try {
+            const { data, error } = await supabaseClient
+                .from(FOLDERS_TABLE)
+                .select('*')
+                .eq('user_id', CURRENT_USER_ID)
+                .order('created_at', { ascending: true });
+
+            if (!error && data) {
+                const oldJson = JSON.stringify(this.folders);
+                const newJson = JSON.stringify(data);
+                if (oldJson !== newJson) {
+                    this.folders = data;
+                    try {
+                        localStorage.setItem('notozApp_folders_' + CURRENT_USER_ID, newJson);
+                    } catch (_) {}
+                    this.renderFolders();
+                }
+            }
+        } catch (e) {
+            console.warn('[Folders] Background sync error:', e);
         }
     },
 
@@ -3744,10 +3751,20 @@ app.exportPDF = async function () {
     const filename = Utils.sanitizeFilename(title) + '.pdf';
 
     if (!window.jspdf || !window.jspdf.jsPDF) {
-        console.error('jsPDF is not loaded (window.jspdf missing)');
-        alert('PDF export is unavailable: the jsPDF library failed to load.');
-        this.closeDropdown('shareDropdown');
-        return;
+        try {
+            await new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = '../vendor/jspdf.umd.min.js';
+                s.onload = resolve;
+                s.onerror = reject;
+                document.head.appendChild(s);
+            });
+        } catch (e) {
+            console.error('jsPDF is not loaded:', e);
+            alert('PDF export is unavailable: the jsPDF library failed to load.');
+            this.closeDropdown('shareDropdown');
+            return;
+        }
     }
 
     const fetchImageAsDataUrl = async (src) => {
@@ -4394,11 +4411,19 @@ try {
         this.renderEditor();
         this.updateNotesCount();
 
-        await this.decryptNotesInBackground(); // decrypts all, patches list items as it goes
+        // Non-blocking fast path: decrypt active note & visible items first
+        if (typeof this.decryptVisibleNotesOnly === 'function') {
+            this.decryptVisibleNotesOnly();
+        } else {
+            this.decryptNotesInBackground();
+        }
 
     } else {
 
         this.notes = [];
+        if (isOnline()) {
+            await this.syncNotesFromServer();
+        }
     }
 
 } catch (err) {
@@ -4407,7 +4432,7 @@ try {
     this.notes = [];
 }
 
-if (isOnline()) {
+if (isOnline() && this.notes.length > 0) {
     this.syncNotesFromServer();
 }
 
@@ -4791,6 +4816,10 @@ app.handleActionParams = function () {
 
 // Initialize app
 app.init();
+
+if (typeof window.__NOTOZ_SYNC_HUD === 'function') {
+    window.__NOTOZ_SYNC_HUD();
+}
 
 // Expose on window for Capacitor native bridge & external integrations
 window.app = app;

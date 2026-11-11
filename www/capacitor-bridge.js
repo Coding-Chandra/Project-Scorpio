@@ -79,16 +79,20 @@
   }
 
   // ── 3. SPLASH SCREEN ──────────────────────────────────────────────────────
-  async function hideSplash() {
+  let splashHidden = false;
+  async function hideSplash(duration = 180) {
+    if (splashHidden) return;
+    splashHidden = true;
     try {
       if (SplashScreen) {
-        await SplashScreen.hide({ fadeOutDuration: 350 });
+        await SplashScreen.hide({ fadeOutDuration: duration });
         console.log('[CapBridge] Splash hidden.');
       }
     } catch (e) {
       console.warn('[CapBridge] Splash error:', e);
     }
   }
+  window.__NOTOZ_HIDE_SPLASH = hideSplash;
 
   // ── 4. KEYBOARD BEHAVIOR ──────────────────────────────────────────────────
   function setupKeyboard() {
@@ -292,8 +296,8 @@
     setupKeyboard();
     await setupStatusBar();
 
-    // Dismiss splash once the WebView has rendered initial paint
-    setTimeout(hideSplash, 300);
+    // Safety fallback: ensure splash is dismissed even if app rendering encounters an error
+    setTimeout(() => hideSplash(180), 1000);
     console.log('[CapBridge] ✓ Bridge active and listeners registered.');
   }
 
@@ -309,6 +313,7 @@
     isNative: true,
     platform: window.Capacitor.getPlatform(),
     haptics: haptics,
+    hideSplash: hideSplash,
     openInBrowser: (url) => Browser ? Browser.open({ url, toolbarColor: '#000000' }) : window.open(url, '_system'),
     getNetworkStatus: () => Network ? Network.getStatus() : Promise.resolve({ connected: navigator.onLine }),
     minimizeApp: () => App ? App.minimizeApp() : undefined,
