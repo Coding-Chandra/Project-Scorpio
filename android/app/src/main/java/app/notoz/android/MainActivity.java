@@ -11,7 +11,6 @@ import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
 import android.view.Display;
-import android.view.Surface;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -91,8 +90,12 @@ public class MainActivity extends BridgeActivity {
                     WindowManager.LayoutParams lp = window.getAttributes();
                     lp.preferredDisplayModeId = maxMode.getModeId();
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                        lp.preferredMinDisplayRefreshRate = resolvedMaxRate;
-                        lp.preferredMaxDisplayRefreshRate = resolvedMaxRate;
+                        try {
+                            java.lang.reflect.Field minField = WindowManager.LayoutParams.class.getField("preferredMinDisplayRefreshRate");
+                            java.lang.reflect.Field maxField = WindowManager.LayoutParams.class.getField("preferredMaxDisplayRefreshRate");
+                            minField.setFloat(lp, resolvedMaxRate);
+                            maxField.setFloat(lp, resolvedMaxRate);
+                        } catch (Throwable ignored) {}
                     }
                     window.setAttributes(lp);
                 }
@@ -110,9 +113,10 @@ public class MainActivity extends BridgeActivity {
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && finalMaxRate > 60.0f) {
                     try {
-                        window.getDecorView().setFrameRate(finalMaxRate, Surface.FRAME_RATE_COMPATIBILITY_DEFAULT);
-                        webView.setFrameRate(finalMaxRate, Surface.FRAME_RATE_COMPATIBILITY_DEFAULT);
-                    } catch (Exception ignored) {}
+                        java.lang.reflect.Method setFrameRateMethod = View.class.getMethod("setFrameRate", float.class, int.class);
+                        setFrameRateMethod.invoke(window.getDecorView(), finalMaxRate, 0);
+                        setFrameRateMethod.invoke(webView, finalMaxRate, 0);
+                    } catch (Throwable ignored) {}
                 }
 
                 // Native Feature Bridge: Downloads, Monet, Speech, Share
@@ -461,28 +465,31 @@ public class MainActivity extends BridgeActivity {
         public String getMonetColorsJson() {
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    int accent1_500 = getResources().getColor(android.R.color.system_accent1_500, getTheme());
-                    int accent1_100 = getResources().getColor(android.R.color.system_accent1_100, getTheme());
-                    int accent1_900 = getResources().getColor(android.R.color.system_accent1_900, getTheme());
-                    int accent2_500 = getResources().getColor(android.R.color.system_accent2_500, getTheme());
-                    int neutral1_900 = getResources().getColor(android.R.color.system_neutral1_900, getTheme());
+                    int idAccent500 = getResources().getIdentifier("system_accent1_500", "color", "android");
+                    if (idAccent500 != 0) {
+                        int accent1_500 = ContextCompat.getColor(MainActivity.this, idAccent500);
+                        int r = (accent1_500 >> 16) & 0xFF;
+                        int g = (accent1_500 >> 8) & 0xFF;
+                        int b = accent1_500 & 0xFF;
 
-                    int r = (accent1_500 >> 16) & 0xFF;
-                    int g = (accent1_500 >> 8) & 0xFF;
-                    int b = accent1_500 & 0xFF;
+                        JSONObject json = new JSONObject();
+                        json.put("supported", true);
+                        json.put("seedHex", String.format("#%02X%02X%02X", r, g, b));
+                        json.put("r", r);
+                        json.put("g", g);
+                        json.put("b", b);
+                        json.put("accent1_500", String.format("#%06X", (0xFFFFFF & accent1_500)));
 
-                    JSONObject json = new JSONObject();
-                    json.put("supported", true);
-                    json.put("seedHex", String.format("#%02X%02X%02X", r, g, b));
-                    json.put("r", r);
-                    json.put("g", g);
-                    json.put("b", b);
-                    json.put("accent1_500", String.format("#%06X", (0xFFFFFF & accent1_500)));
-                    json.put("accent1_100", String.format("#%06X", (0xFFFFFF & accent1_100)));
-                    json.put("accent1_900", String.format("#%06X", (0xFFFFFF & accent1_900)));
-                    json.put("accent2_500", String.format("#%06X", (0xFFFFFF & accent2_500)));
-                    json.put("neutral1_900", String.format("#%06X", (0xFFFFFF & neutral1_900)));
-                    return json.toString();
+                        int idAccent100 = getResources().getIdentifier("system_accent1_100", "color", "android");
+                        if (idAccent100 != 0) {
+                            json.put("accent1_100", String.format("#%06X", (0xFFFFFF & ContextCompat.getColor(MainActivity.this, idAccent100))));
+                        }
+                        int idAccent900 = getResources().getIdentifier("system_accent1_900", "color", "android");
+                        if (idAccent900 != 0) {
+                            json.put("accent1_900", String.format("#%06X", (0xFFFFFF & ContextCompat.getColor(MainActivity.this, idAccent900))));
+                        }
+                        return json.toString();
+                    }
                 }
             } catch (Exception ignored) {}
             return "{\"supported\":false}";
