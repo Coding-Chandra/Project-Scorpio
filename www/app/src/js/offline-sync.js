@@ -12,7 +12,7 @@
  * - Works with encrypted content
  * - Only Works when App was opened at least once with internet connection to initialize the database and get user info. After that, it can work offline until the user logs out or clears data.
  * 
- * Note: This module assumes that the main app (app.js) handles encryption/decryption of note content before saving or syncing. This module focuses on offline storage and sync logic.
+ * The app encrypts online saves, and this module encrypts locally queued plaintext before upload.
  */
 
 // =====================================================
@@ -342,13 +342,20 @@ async function syncNoteUpsert(queueItem, user) {
     throw new Error('supabaseClient not available');
   }
 
+  const encryptedTitle = noteData.title?.startsWith('enc:')
+    ? noteData.title
+    : await _fastEncrypt(noteData.title || '');
+  const encryptedContent = noteData.content?.startsWith('enc:')
+    ? noteData.content
+    : await _fastEncrypt(noteData.content || '');
+
   const { data, error } = await supabaseClient
     .from('notes')
     .upsert({
       id: noteData.id,
       user_id: user.id,
-      title: noteData.title,
-      content: noteData.content,      // Already encrypted by app.js ✓
+      title: encryptedTitle,
+      content: encryptedContent,
       folder_id: noteData.folder_id || null,
       created_at: noteData.created_at,
       updated_at: new Date().toISOString()

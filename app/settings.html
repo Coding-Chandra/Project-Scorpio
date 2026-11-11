@@ -221,7 +221,7 @@
                     </span>
                     <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
                 </div>
-                <div class="row clickable mobile-settings-entry" role="button" tabindex="0" aria-controls="mobile-developer-options-page" aria-expanded="false" onclick="openMobileSettingsPage('developer-options')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMobileSettingsPage('developer-options');}">
+                <div class="row clickable mobile-settings-entry developer-options-entry" role="button" tabindex="0" aria-controls="mobile-developer-options-page" aria-expanded="false" onclick="openMobileSettingsPage('developer-options')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMobileSettingsPage('developer-options');}" hidden>
                     <span class="label settings-feature-label">
                         <svg class="settings-feature-icon" viewBox="0 0 24 24" aria-hidden="true">
                             <path d="m8 8-4 4 4 4m8-8 4 4-4 4m-3-11-2 14"/>
@@ -413,7 +413,7 @@
                 </div>
                 <p class="developer-options-description">Developer tools are off by default. Turn them on to access diagnostic tools on this device.</p>
                 <div class="settings-group">
-                    <div id="mobile-hfr-hud-entry" class="row developer-subpage-entry">
+                    <div id="mobile-hfr-hud-entry" class="row developer-subpage-entry" hidden>
                         <div>
                             <span class="label settings-feature-label">Performance HUD (HFR Telemetry)</span>
                             <p class="developer-setting-hint" style="margin: 2px 0 0; font-size: 12px; color: var(--text-dim, rgba(255,255,255,0.6));">Live 120/144Hz FPS & VSync overlay</p>
@@ -424,7 +424,7 @@
                     </div>
                 </div>
                 <div class="settings-group">
-                    <div id="mobile-check-logs-entry" class="row clickable developer-subpage-entry" role="button" tabindex="0" aria-controls="mobile-developer-logs-page" aria-expanded="false" onclick="openMobileSettingsPage('developer-logs')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMobileSettingsPage('developer-logs');}">
+                    <div id="mobile-check-logs-entry" class="row clickable developer-subpage-entry" role="button" tabindex="0" aria-controls="mobile-developer-logs-page" aria-expanded="false" onclick="openMobileSettingsPage('developer-logs')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMobileSettingsPage('developer-logs');}" hidden>
                         <span class="label settings-feature-label">Check logs</span>
                         <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
                     </div>
@@ -457,7 +457,7 @@
                 const page = document.getElementById(pageId);
                 if (!list || !page) return;
                 if (
-                    pageName === "developer-logs" &&
+                    pageName.startsWith("developer-") &&
                     !window.isDeveloperOptionsEnabled()
                 ) return;
 
@@ -542,11 +542,15 @@
                 });
 
                 [
-                    "mobile-check-logs-entry",
-                    "desktop-check-logs-entry",
-                    "mobile-hfr-hud-entry",
-                    "desktop-hfr-hud-entry",
-                    ...document.querySelectorAll(".developer-logs-nav-item"),
+                    ...document.querySelectorAll(
+                        ".developer-options-entry, .developer-options-nav-item, .developer-logs-nav-item",
+                    ),
+                    ...[
+                        "mobile-check-logs-entry",
+                        "desktop-check-logs-entry",
+                        "mobile-hfr-hud-entry",
+                        "desktop-hfr-hud-entry",
+                    ].map((id) => document.getElementById(id)),
                 ].forEach((entry) => {
                     if (entry) entry.hidden = !enabled;
                 });
@@ -555,15 +559,23 @@
 
                 if (
                     !enabled &&
-                    !document.getElementById("mobile-developer-logs-page").hidden
+                    (!document.getElementById("mobile-developer-options-page").hidden ||
+                        !document.getElementById("mobile-developer-logs-page").hidden)
                 ) {
-                    openMobileSettingsPage("developer-options");
+                    closeMobileSettingsPage();
                 }
                 const desktopLogsSection = document.querySelector(
                     '[data-native-section="dev-logs"]',
                 );
-                if (!enabled && desktopLogsSection?.classList.contains("active")) {
-                    window.openDesktopSettingsSection?.("developer-options");
+                const desktopOptionsSection = document.querySelector(
+                    '[data-native-section="developer-options"]',
+                );
+                if (
+                    !enabled &&
+                    (desktopLogsSection?.classList.contains("active") ||
+                        desktopOptionsSection?.classList.contains("active"))
+                ) {
+                    window.openDesktopSettingsSection?.("general");
                 }
             }
 
@@ -599,6 +611,14 @@
             window.addEventListener("developer-options-changed", (event) => {
                 syncDeveloperOptionsUI(Boolean(event.detail?.enabled));
             });
+            window.addEventListener("developer-options-unlocked", () => {
+                syncDeveloperOptionsUI(true);
+                if (window.matchMedia("(min-width: 900px)").matches) {
+                    window.openDesktopSettingsSection?.("developer-options");
+                } else {
+                    openMobileSettingsPage("developer-options");
+                }
+            });
             window.addEventListener("hfr-hud-changed", (event) => {
                 syncHfrHudUI(Boolean(event.detail?.enabled));
             });
@@ -610,6 +630,11 @@
                 }
             });
             syncDeveloperOptionsUI(window.isDeveloperOptionsEnabled());
+            document.addEventListener(
+                "DOMContentLoaded",
+                () => syncDeveloperOptionsUI(window.isDeveloperOptionsEnabled()),
+                { once: true },
+            );
 
             document.addEventListener("keydown", (event) => {
                 if (
@@ -676,13 +701,13 @@
                             <svg class="settings-item-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 1 1 8 0v3"/><path d="M12 14v3"/></svg>
                             <span>Locked Folder</span>
                         </button>
+                        <button class="desktop-settings-item developer-options-nav-item" data-section="developer-options" data-kind="native" hidden>
+                            <svg class="settings-item-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 8-4 4 4 4m8-8 4 4-4 4m-3-11-2 14"/></svg>
+                            <span>Developer options</span>
+                        </button>
                         <button class="desktop-settings-item" data-section="updates" data-kind="native">
                             <svg class="settings-item-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0 1 4"/><path d="M20 5v6h-6"/></svg>
                             <span>Updates</span>
-                        </button>
-                        <button class="desktop-settings-item" data-section="developer-options" data-kind="native">
-                            <svg class="settings-item-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 8-4 4 4 4m8-8 4 4-4 4m-3-11-2 14"/></svg>
-                            <span>Developer options</span>
                         </button>
                         <button class="desktop-settings-item developer-logs-nav-item" data-section="dev-logs" data-kind="native" hidden>
                             <svg class="settings-item-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v14H5z"/><path d="M8 9h8m-8 3h8m-8 3h5"/></svg>
@@ -851,7 +876,7 @@
                                         <span class="notifThumb"></span>
                                     </button>
                                 </div>
-                                <div id="desktop-hfr-hud-entry" class="row developer-subpage-entry">
+                                <div id="desktop-hfr-hud-entry" class="row developer-subpage-entry" hidden>
                                     <div>
                                         <span class="label">Performance HUD (HFR Telemetry)</span>
                                         <p class="developer-setting-hint" style="margin: 2px 0 0; font-size: 12px; color: var(--text-dim, rgba(255,255,255,0.6));">Live 120/144Hz FPS & VSync overlay</p>
@@ -860,7 +885,7 @@
                                         <span class="notifThumb"></span>
                                     </button>
                                 </div>
-                                <div id="desktop-check-logs-entry" class="row clickable developer-subpage-entry" role="button" tabindex="0" onclick="openDesktopSettingsSection('dev-logs')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDesktopSettingsSection('dev-logs');}">
+                                <div id="desktop-check-logs-entry" class="row clickable developer-subpage-entry" role="button" tabindex="0" onclick="openDesktopSettingsSection('dev-logs')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDesktopSettingsSection('dev-logs');}" hidden>
                                     <span class="label">Check logs</span>
                                     <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
                                 </div>

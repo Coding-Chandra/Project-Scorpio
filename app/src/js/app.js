@@ -298,7 +298,7 @@ async function decryptWithMasterKey(stored) {
     if (!stored) return '';
     if (!stored.startsWith('enc:')) return stored;
     const key = await getSessionMasterKey();
-    if (!key) return stored;
+    if (!key) throw new Error('Master key not available locally.');
     const [, ivB64, ctB64] = stored.split(':');
     const iv = _b64Decode(ivB64);
     const ct = _b64Decode(ctB64);
@@ -341,16 +341,12 @@ async function _getEncryptKey() {
 async function _fastDecrypt(stored) {
     if (!stored || !stored.startsWith('enc:')) return stored || '';
     const key = await _getDecryptKey();
-    if (!key) return stored; // master key not available yet
+    if (!key) throw new Error('Master key not available locally.');
     const [, ivB64, ctB64] = stored.split(':');
     const iv = _b64Decode(ivB64);
     const ct = _b64Decode(ctB64);
-    try {
-        const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
-        return new TextDecoder().decode(dec);
-    } catch (e) {
-        return stored; // return raw if decrypt fails (wrong key, corrupted)
-    }
+    const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+    return new TextDecoder().decode(dec);
 }
 
 /**
@@ -1368,7 +1364,9 @@ const app = {
         try {
             encryptedTitle = await encryptWithMasterKey(plainTitle);
         } catch (e) {
-            console.warn('[Encrypt] Could not encrypt initial title, saving plain:', e);
+            console.error('[Encrypt] Could not encrypt initial title:', e);
+            alert('Could not encrypt the new note. Please try again after your encryption key is available.');
+            return;
         }
 
         const newNote = {
@@ -1493,8 +1491,20 @@ const app = {
             encryptedTitle = await encryptWithMasterKey(note.title);
         } catch (e) {
             console.error('Encryption failed (master key missing).', e);
-            encryptedContent = note.content;
-            encryptedTitle = note.title;
+            try {
+                await saveNoteOffline({ ...note, user_id: CURRENT_USER_ID });
+                if (typeof showNotification === 'function') {
+                    showNotification(
+                        'Saved on this device',
+                        'Encryption was unavailable, so your changes were saved locally and were not uploaded.',
+                        'error',
+                    );
+                }
+            } catch (offlineError) {
+                console.error('[Offline] Could not preserve changes after encryption failed:', offlineError);
+                alert('Could not encrypt or save this note. Please try again.');
+            }
+            return;
         }
 
         const { error } = await supabaseClient
@@ -1542,7 +1552,9 @@ const app = {
         if (previewEl) {
             const preview = note._decrypted
                 ? Utils.stripHtml(String(note.content || '')).substring(0, 50) || 'No text'
-                : '...';
+                : note._previewDecrypted
+                    ? Utils.stripHtml(String(note._preview?.preview || '')).substring(0, 50) || 'No text'
+                    : '...';
             previewEl.textContent = preview;
         }
 
@@ -1915,7 +1927,9 @@ app.renderNotesList = function (animate = true) {
 
         const preview = note._decrypted
             ? (Utils.stripHtml(String(note.content || '')).substring(0, 50) || 'No text')
-            : '...';
+            : note._previewDecrypted
+                ? (Utils.stripHtml(String(note._preview?.preview || '')).substring(0, 50) || 'No text')
+                : '...';
         const hasImage = /<img/i.test(note.content || '');
 
         // Show decrypted title or placeholder
@@ -4580,7 +4594,7 @@ app.saveSingleNoteToIndexedDB = async function (note) {
 };
 
 // ============================================================================
-// DECRYPT ONLY VISIBLE NOTES
+// DECRYPT NOTE PREVIEWS
 // ============================================================================
 
 app.decryptVisibleNotesOnly = async function () {
@@ -4593,9 +4607,9 @@ app.decryptVisibleNotesOnly = async function () {
         return;
     }
 
-    const notes = this.getNotesToDisplay().slice(0, 15);
+    const notes = this.notes;
     for (const note of notes) {
-        if (!note._decrypted) {
+        if (!note._decrypted && !note._previewDecrypted) {
             DecryptQueue.queuePreview(note.id);
         }
     }

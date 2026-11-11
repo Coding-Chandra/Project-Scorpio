@@ -158,6 +158,32 @@
         return true;
     };
 
+    function initializeDeveloperUnlock() {
+        ["buildNumberDisplay", "desktop-build-number"].forEach((id) => {
+            const buildNumber = document.getElementById(id);
+            if (!buildNumber) return;
+
+            let tapCount = 0;
+            let lastTapAt = 0;
+            buildNumber.addEventListener("click", () => {
+                const now = Date.now();
+                tapCount = now - lastTapAt > 2000 ? 1 : tapCount + 1;
+                lastTapAt = now;
+                if (tapCount < 7) return;
+
+                tapCount = 0;
+                if (!window.setDeveloperOptionsEnabled(true)) return;
+                window.dispatchEvent(new CustomEvent("developer-options-unlocked"));
+            });
+        });
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initializeDeveloperUnlock, { once: true });
+    } else {
+        initializeDeveloperUnlock();
+    }
+
     function record(level, args, source) {
         const entry = {
             timestamp: new Date().toISOString(),

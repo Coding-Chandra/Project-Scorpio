@@ -2871,6 +2871,14 @@ html[data-ui="nothing"][data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
     display: none !important;
 }
 
+.developer-options-entry[hidden] {
+    display: none !important;
+}
+
+.developer-options-nav-item[hidden] {
+    display: none !important;
+}
+
 .developer-logs-nav-item {
     padding-left: 34px !important;
 }
