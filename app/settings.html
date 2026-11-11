@@ -709,10 +709,6 @@
                             <svg class="settings-item-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0 1 4"/><path d="M20 5v6h-6"/></svg>
                             <span>Updates</span>
                         </button>
-                        <button class="desktop-settings-item developer-logs-nav-item" data-section="dev-logs" data-kind="native" hidden>
-                            <svg class="settings-item-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v14H5z"/><path d="M8 9h8m-8 3h8m-8 3h5"/></svg>
-                            <span>Check logs</span>
-                        </button>
                     </div>
 
                     <div class="desktop-nav-group">
@@ -1473,8 +1469,10 @@
                     ) {
                         section = "developer-options";
                     }
+                    const navSection =
+                        section === "dev-logs" ? "developer-options" : section;
                     const item =
-                        items.find((x) => x.dataset.section === section) || items[0];
+                        items.find((x) => x.dataset.section === navSection) || items[0];
                     if (!item) return;
 
                     items.forEach((x) => {

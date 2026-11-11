@@ -94,7 +94,7 @@ async function initializeDatabase() {
 /**
  * Save a note locally (works offline)
  */
-async function saveNoteOffline(noteData) {
+async function saveNoteOffline(noteData, { preserveUpdatedAt = false } = {}) {
   if (!db) await initializeDatabase();
 
   return new Promise((resolve, reject) => {
@@ -111,7 +111,7 @@ async function saveNoteOffline(noteData) {
       id: noteId,
       user_id: noteData.user_id,
       created_at: noteData.created_at || timestamp,
-      updated_at: timestamp,
+      updated_at: preserveUpdatedAt ? noteData.updated_at || timestamp : timestamp,
       synced: false,
       offline: true
     };
@@ -358,7 +358,8 @@ async function syncNoteUpsert(queueItem, user) {
       content: encryptedContent,
       folder_id: noteData.folder_id || null,
       created_at: noteData.created_at,
-      updated_at: new Date().toISOString()
+      ...(typeof noteData.pinned === 'boolean' ? { pinned: noteData.pinned } : {}),
+      updated_at: noteData.updated_at || new Date().toISOString()
     });
 
   if (error) throw error;

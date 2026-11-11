@@ -691,7 +691,21 @@ function dataUrlToBlobParts(dataUrl) {
     return { mime, blob: new Blob([bytes], { type: mime }) };
 }
 
-function downloadBlob(blob, filename) {
+async function downloadBlob(blob, filename) {
+    if (window.NotozNativeBridge && typeof window.NotozNativeBridge.saveNoteToDownloads === 'function') {
+        try {
+            const reader = new FileReader();
+            const base64Data = await new Promise((resolve, reject) => {
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+            const ok = window.NotozNativeBridge.saveNoteToDownloads(filename, base64Data, blob.type || 'application/octet-stream', true);
+            if (ok) return;
+        } catch (e) {
+            console.error('[NotozNativeBridge] Error downloading in profile:', e);
+        }
+    }
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;

@@ -419,9 +419,32 @@
         showToast('Image copied to clipboard.');
     }
 
-    function downloadImage(target) {
+    async function downloadImage(target) {
+        const src = target.dataset.fullSrc || target.src;
+        if (window.NotozNativeBridge && typeof window.NotozNativeBridge.saveNoteToDownloads === 'function') {
+            try {
+                let base64 = '';
+                if (src.startsWith('data:')) {
+                    base64 = src.split(',')[1];
+                } else {
+                    const resp = await fetch(src);
+                    const blob = await resp.blob();
+                    const reader = new FileReader();
+                    base64 = await new Promise((resolve, reject) => {
+                        reader.onload = () => resolve(reader.result.split(',')[1]);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(blob);
+                    });
+                }
+                const filename = 'note-image-' + Date.now() + '.png';
+                const ok = window.NotozNativeBridge.saveNoteToDownloads(filename, base64, 'image/png', true);
+                if (ok) return;
+            } catch (err) {
+                console.warn('[image-viewer] Native download failed, falling back to web:', err);
+            }
+        }
         const link = document.createElement('a');
-        link.href = target.dataset.fullSrc || target.src;
+        link.href = src;
         link.download = 'note-image.png';
         link.hidden = true;
         document.body.appendChild(link);

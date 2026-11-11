@@ -2,7 +2,7 @@
  * ============================================================================
  * HFR MOTION ENGINE (High-Frame-Rate Motion Engine)
  * ============================================================================
- * Optimized specifically for 120Hz ProMotion (iOS WKWebView) & 144Hz (Android
+ * Optimized specifically for 120Hz Pro Motion (iOS WKWebView) & 144Hz (Android
  * Chromium WebView) mobile displays.
  *
  * Strict Performance Architecture:
@@ -205,22 +205,39 @@
   let droppedFrames = 0;
 
   // Frame timing history for refresh rate detection
-  const REFRESH_DETECT_SAMPLES = 40;
+  const REFRESH_DETECT_SAMPLES = 60;
   const frameDeltaHistory = new Float32Array(REFRESH_DETECT_SAMPLES);
   let deltaHistoryIdx = 0;
   let deltaHistoryCount = 0;
 
-  function analyzeRefreshRate() {
-    if (deltaHistoryCount < 30) return;
-    // Calculate median delta
-    const sorted = Array.from(frameDeltaHistory.subarray(0, deltaHistoryCount)).sort((a, b) => a - b);
-    const median = sorted[Math.floor(sorted.length / 2)];
+  function recordFrameDelta(dtMs) {
+    if (dtMs >= 3.5 && dtMs <= 40.0) {
+      frameDeltaHistory[deltaHistoryIdx] = dtMs;
+      deltaHistoryIdx = (deltaHistoryIdx + 1) % REFRESH_DETECT_SAMPLES;
+      if (deltaHistoryCount < REFRESH_DETECT_SAMPLES) deltaHistoryCount++;
+    }
+  }
 
-    if (median <= 7.4) {
+  function analyzeRefreshRate() {
+    if (deltaHistoryCount < 10) return;
+    const count = Math.min(deltaHistoryCount, REFRESH_DETECT_SAMPLES);
+    const validDeltas = [];
+    for (let i = 0; i < count; i++) {
+      const d = frameDeltaHistory[i];
+      if (d >= 3.5 && d <= 35.0) {
+        validDeltas.push(d);
+      }
+    }
+    if (validDeltas.length < 8) return;
+    validDeltas.sort((a, b) => a - b);
+    // Lower 25th percentile of clean frames avoids startup and GC spikes
+    const p25 = validDeltas[Math.floor(validDeltas.length * 0.25)];
+
+    if (p25 <= 7.8 || currentFps > 130) {
       detectedRefreshRate = 144;
-    } else if (median <= 9.2) {
-      detectedRefreshRate = 120; // ProMotion
-    } else if (median <= 12.0) {
+    } else if (p25 <= 9.6 || currentFps > 100) {
+      detectedRefreshRate = 120; // ProMotion / 120Hz
+    } else if (p25 <= 12.5 || currentFps > 75) {
       detectedRefreshRate = 90;
     } else {
       detectedRefreshRate = 60;
@@ -266,15 +283,7 @@
     // Telemetry updates
     const dtMs = dt * 1000;
     currentFrameTime = dtMs;
-
-    if (deltaHistoryCount < REFRESH_DETECT_SAMPLES) {
-      frameDeltaHistory[deltaHistoryIdx] = dtMs;
-      deltaHistoryIdx = (deltaHistoryIdx + 1) % REFRESH_DETECT_SAMPLES;
-      deltaHistoryCount++;
-      if (deltaHistoryCount === REFRESH_DETECT_SAMPLES) {
-        analyzeRefreshRate();
-      }
-    }
+    recordFrameDelta(dtMs);
 
     // Measure FPS over 1 second window
     frameCount++;
@@ -282,6 +291,7 @@
       currentFps = Math.round((frameCount * 1000) / (timestamp - fpsTimer));
       frameCount = 0;
       fpsTimer = timestamp;
+      analyzeRefreshRate();
     }
 
     // Dropped frame check (if dt > 1.35x expected frame time for detected rate)
@@ -708,10 +718,15 @@
 
   // ── TELEMETRY API ─────────────────────────────────────────────────────────
   function getTelemetry() {
+    let effectiveRate = detectedRefreshRate;
+    if (currentFps > 130 && effectiveRate < 144) effectiveRate = 144;
+    else if (currentFps > 100 && effectiveRate < 120) effectiveRate = 120;
+    else if (currentFps > 75 && effectiveRate < 90) effectiveRate = 90;
+
     return {
       fps: currentFps,
       frameTimeMs: currentFrameTime,
-      detectedRefreshRate: detectedRefreshRate || (currentFps > 100 ? 120 : 60),
+      detectedRefreshRate: effectiveRate || 60,
       droppedFrames: droppedFrames,
       activeEntities: activeCount,
       allocationsInLoop: 0 // Architectural zero-allocation guarantee
@@ -747,18 +762,18 @@
   if (typeof window !== 'undefined') {
     let warmupFrames = 0;
     const warmup = (t) => {
-      if (warmupFrames === 0) lastRafTime = t;
-      else {
+      if (warmupFrames === 0) {
+        lastRafTime = t;
+      } else {
         const dt = t - lastRafTime;
         lastRafTime = t;
-        if (deltaHistoryCount < REFRESH_DETECT_SAMPLES) {
-          frameDeltaHistory[deltaHistoryIdx] = dt;
-          deltaHistoryIdx = (deltaHistoryIdx + 1) % REFRESH_DETECT_SAMPLES;
-          deltaHistoryCount++;
+        recordFrameDelta(dt);
+        if (warmupFrames % 10 === 0) {
+          analyzeRefreshRate();
         }
       }
       warmupFrames++;
-      if (warmupFrames < 35) {
+      if (warmupFrames < 40) {
         requestAnimationFrame(warmup);
       } else {
         analyzeRefreshRate();

@@ -29,13 +29,86 @@ const loginEmailInput = document.getElementById('login-email');
 const passwordGroup = document.getElementById('password-group');
 const loginPasswordInput = document.getElementById('login-password');
 const loginButton = loginForm?.querySelector('button[type="submit"]');
+let messageTimeout;
 
-
-function displayMessage(text, isError = false) {
+function displayMessage(text, isError = false, action = null) {
     if (!messageEl) return;
+    clearTimeout(messageTimeout);
+    messageEl.replaceChildren();
     messageEl.textContent = text;
     messageEl.style.color = isError ? "#f44336" : "#4caf50";
-    setTimeout(() => (messageEl.textContent = ""), 5000);
+    if (action) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'auth-message-action';
+        button.textContent = action.label;
+        button.addEventListener('click', () => action.run(button));
+        messageEl.appendChild(button);
+    }
+    if (text && !action) {
+        messageTimeout = setTimeout(() => messageEl.replaceChildren(), 10000);
+    }
+}
+
+function getAuthErrorFeedback(error, context) {
+    const message = (error?.message || '').toLowerCase();
+    const code = (error?.code || '').toLowerCase();
+
+    if (code === 'email_not_confirmed' || message.includes('email not confirmed') || message.includes('email_not_confirmed')) {
+        return { text: 'Please verify your email before signing in.', resend: true };
+    }
+    if (code === 'user_already_exists' || message.includes('already registered') || message.includes('already exists')) {
+        return { text: 'An account with this email already exists. Sign in, or resend the verification email if it is still pending.', resend: true };
+    }
+    if (code === 'invalid_credentials' || message.includes('invalid login credentials') || message.includes('invalid credentials')) {
+        return { text: 'Email or password is incorrect. Check your details and try again.' };
+    }
+    if (code.includes('password') || message.includes('password should') || message.includes('password must') || message.includes('weak password')) {
+        return { text: 'Your password does not meet the requirements. Use at least 8 characters.' };
+    }
+    if (code.includes('email') && (message.includes('invalid') || message.includes('valid'))) {
+        return { text: 'Enter a valid email address.' };
+    }
+    if (code.includes('rate') || code.includes('too_many') || message.includes('rate limit') || message.includes('too many requests') || message.includes('after 60 seconds')) {
+        return { text: 'Too many attempts. Please wait a moment before trying again.' };
+    }
+    if (code.includes('already_confirmed') || message.includes('already confirmed')) {
+        return { text: 'This email is already verified. You can sign in now.' };
+    }
+    if (message.includes('failed to fetch') || message.includes('network') || message.includes('fetch failed')) {
+        return { text: 'Could not connect. Check your internet connection and try again.' };
+    }
+
+    console.error(`Authentication ${context} failed:`, error);
+    return {
+        text: context === 'signup'
+            ? 'We could not create your account. Please try again.'
+            : context === 'resend'
+                ? 'Could not resend the verification email. Please try again.'
+                : 'We could not sign you in. Please try again.'
+    };
+}
+
+async function resendVerificationEmail(email, button) {
+    button.disabled = true;
+    button.textContent = 'Sending...';
+
+    try {
+        const { error } = await supabaseClient.auth.resend({ type: 'signup', email });
+        if (error) {
+            const feedback = getAuthErrorFeedback(error, 'resend');
+            displayMessage(feedback.text, true, feedback.resend ? {
+                label: 'Resend verification email',
+                run: nextButton => resendVerificationEmail(email, nextButton)
+            } : null);
+            return;
+        }
+
+        displayMessage('Verification email sent. Check your inbox and spam folder.');
+    } catch (error) {
+        const feedback = getAuthErrorFeedback(error, 'resend');
+        displayMessage(feedback.text, true);
+    }
 }
 
 function handleAuthSuccess() {
@@ -216,27 +289,54 @@ async function handleSignup(e) {
 
     displayMessage("Creating account...", false);
 
-    const { data, error } = await supabaseClient.auth.signUp({
-        email, password,
-        options: { data: { full_name: displayName }, emailRedirectTo: window.location.origin }
-    });
-
-    if (error) {
-        if (error.message.toLowerCase().includes("already")) {
-            displayMessage("An account with this email already exists. Please log in instead.", true);
-        } else {
-            displayMessage(error.message, true);
-        }
+    let data;
+    let error;
+    try {
+        ({ data, error } = await supabaseClient.auth.signUp({
+            email, password,
+            options: { data: { full_name: displayName }, emailRedirectTo: window.location.origin }
+        }));
+    } catch (signupError) {
+        const feedback = getAuthErrorFeedback(signupError, 'signup');
+        displayMessage(feedback.text, true);
         return;
     }
 
-    if (data.user && !data.session) {
-        displayMessage("Registration successful! Please check your email to verify your account before logging in.", false);
-    } else {
-        displayMessage("Account created successfully!", false);
+    if (error) {
+        const feedback = getAuthErrorFeedback(error, 'signup');
+        switchForm(loginSection, signupSection, {
+            email,
+            message: {
+                text: feedback.text,
+                isError: true,
+                action: feedback.resend ? {
+                    label: 'Resend verification email',
+                    run: button => resendVerificationEmail(email, button)
+                } : null
+            }
+        });
+        return;
     }
 
-    switchForm(loginSection, signupSection);
+    const existingUnverifiedAccount = data.user && !data.session && data.user.identities?.length === 0;
+    const verificationPending = data.user && !data.session;
+    const message = existingUnverifiedAccount
+        ? 'An account with this email already exists and still needs verification.'
+        : verificationPending
+            ? 'Account created. Please verify your email before signing in.'
+            : 'Account created successfully!';
+
+    switchForm(loginSection, signupSection, {
+        email,
+        message: {
+            text: message,
+            isError: false,
+            action: verificationPending ? {
+                label: 'Resend verification email',
+                run: button => resendVerificationEmail(email, button)
+            } : null
+        }
+    });
 }
 
 // ---------------------------------------------------------
@@ -258,9 +358,20 @@ async function handleLogin(e) {
 
     displayMessage("Logging in...", false);
 
-    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    let error;
+    try {
+        ({ error } = await supabaseClient.auth.signInWithPassword({ email, password }));
+    } catch (loginError) {
+        const feedback = getAuthErrorFeedback(loginError, 'login');
+        displayMessage(feedback.text, true);
+        return;
+    }
     if (error) {
-        displayMessage(error.message, true);
+        const feedback = getAuthErrorFeedback(error, 'login');
+        displayMessage(feedback.text, true, feedback.resend ? {
+            label: 'Resend verification email',
+            run: button => resendVerificationEmail(email, button)
+        } : null);
         return;
     }
 
@@ -336,21 +447,28 @@ function showPasswordFields() {
     else passwordGroup.classList.remove('active');
 }
 
-function resetLoginView() {
+function resetLoginView(clearMessage = true) {
     loginEmailInput.disabled = false;
     passwordGroup.classList.remove('active');
     loginForm.reset();
-    displayMessage("", false);
+    if (clearMessage) displayMessage("", false);
 }
 
-function switchForm(targetSection, otherSection) {
+function switchForm(targetSection, otherSection, options = {}) {
     otherSection.classList.add('hidden-auth');
     setTimeout(() => {
         otherSection.style.display = 'none';
         targetSection.style.display = 'block';
         requestAnimationFrame(() => {
             targetSection.classList.remove('hidden-auth');
-            resetLoginView();
+            resetLoginView(!options.message);
+            if (options.email) {
+                loginEmailInput.value = options.email;
+                showPasswordFields();
+            }
+            if (options.message) {
+                displayMessage(options.message.text, options.message.isError, options.message.action);
+            }
         });
     }, 300);
 }

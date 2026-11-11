@@ -5,7 +5,7 @@
  * Production-ready UI components engineered for 120Hz/144Hz mobile displays:
  * 1. HFRInteractiveSheet: Ultra-smooth spring-physics bottom sheet with
  *    gesture velocity inheritance, rubber-banding, and GPU-composited backdrop.
- * 2. HFRInteractiveCard: 3D momentum gesture card with ProMotion spring return.
+ * 2. HFRInteractiveCard: 3D momentum gesture card with Pro Motion spring return.
  * 3. HFRTelemetryHUD: Lightweight real-time display refresh and FPS monitor.
  * ============================================================================
  */
@@ -397,7 +397,7 @@
         <div class="hfr-hud-badge" style="cursor: move; user-select: none; display: flex; align-items: center; justify-content: space-between;">
           <div style="display: flex; align-items: center; gap: 8px;">
             <div class="hfr-hud-dot"></div>
-            <span class="hfr-hud-title">120/144Hz ProMotion</span>
+            <span class="hfr-hud-title">120/144Hz Pro Motion</span>
           </div>
           <button class="hfr-hud-close-btn" type="button" aria-label="Close HUD" title="Close HUD (manage in Dev Options)" style="background: none; border: none; color: rgba(255, 255, 255, 0.7); font-size: 16px; font-weight: bold; cursor: pointer; padding: 2px 6px; line-height: 1;">✕</button>
         </div>
@@ -561,7 +561,11 @@
       this.intervalId = setInterval(() => {
         if (!this.isVisible || !this.hudEl) return;
         const motionTelemetry = window.HFRMotion ? window.HFRMotion.getTelemetry() : null;
-        const rate = (motionTelemetry && motionTelemetry.detectedRefreshRate) || (liveFps > 100 ? 120 : (liveFps > 75 ? 90 : 60));
+        let rate = (motionTelemetry && motionTelemetry.detectedRefreshRate) || 0;
+        if (liveFps > 130) rate = Math.max(rate, 144);
+        else if (liveFps > 100) rate = Math.max(rate, 120);
+        else if (liveFps > 75) rate = Math.max(rate, 90);
+        if (!rate) rate = 60;
 
         this.fpsEl.textContent = liveFps;
         this.rateEl.textContent = rate ? rate + ' Hz' : '-- Hz';

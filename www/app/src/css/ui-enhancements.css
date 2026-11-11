@@ -5,23 +5,9 @@
    Can be used elsewhere
    ===================================================== */
 
-/* =====================================================
-   1. SMOOTH TRANSITIONS FOR ALL INTERACTIVE ELEMENTS
-   ===================================================== */
-
-* {
-  transition: background-color 0.2s ease-out,
-              color 0.2s ease-out,
-              border-color 0.2s ease-out,
-              box-shadow 0.2s ease-out;
-}
-
-/* Exclude elements that shouldn't have transitions */
-input,
-textarea,
-.note-content-editable,
-svg {
-  transition: none !important;
+/* 1. SMOOTH TRANSITIONS - Scoped to relevant classes to avoid global compositor thrashing */
+a, input, button, select, textarea {
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* =====================================================

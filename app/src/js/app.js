@@ -1569,7 +1569,10 @@ const app = {
 
         if (!isOnline()) {
             try {
-                await saveNoteOffline({ ...note, user_id: CURRENT_USER_ID });
+                await saveNoteOffline(
+                    { ...note, user_id: CURRENT_USER_ID },
+                    { preserveUpdatedAt: true },
+                );
             } catch (e) {
                 console.error('[Offline] Failed to save pin state offline:', e);
             }
@@ -1580,7 +1583,7 @@ const app = {
 
         const { error } = await supabaseClient
             .from(NOTES_TABLE)
-            .update({ pinned: note.pinned, updated_at: new Date().toISOString() })
+            .update({ pinned: note.pinned })
             .eq('id', note.id)
             .eq('user_id', CURRENT_USER_ID);
 
@@ -3740,20 +3743,94 @@ app.systemShare = function () {
     this.closeDropdown('shareDropdown');
 };
 
-app.exportTXT = function () {
+app.saveNoteFile = async function (filename, contentOrBlob, mimeType) {
+    const cleanFilename = (filename || 'note.txt').trim();
+    const cleanMime = mimeType || (contentOrBlob instanceof Blob ? contentOrBlob.type : 'text/plain');
+
+    // 1. Android Native Bridge -> saves directly to Downloads/Notoz
+    if (window.NotozNativeBridge && typeof window.NotozNativeBridge.saveNoteToDownloads === 'function') {
+        try {
+            if (contentOrBlob instanceof Blob) {
+                const reader = new FileReader();
+                const base64Data = await new Promise((resolve, reject) => {
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(contentOrBlob);
+                });
+                const ok = window.NotozNativeBridge.saveNoteToDownloads(cleanFilename, base64Data, cleanMime, true);
+                if (ok) return true;
+            } else {
+                const text = typeof contentOrBlob === 'string' ? contentOrBlob : String(contentOrBlob);
+                const ok = window.NotozNativeBridge.saveNoteToDownloads(cleanFilename, text, cleanMime, false);
+                if (ok) return true;
+            }
+        } catch (nativeErr) {
+            console.error('[NotozNativeBridge] Error saving note to Downloads/Notoz:', nativeErr);
+        }
+    }
+
+    // 2. Median / Legacy Native Bridge fallback
+    if (window.MedianJsBridge?.downloadFile || window.median?.nativebridge?.downloadFile || window.median?.nativebridge?.saveFile) {
+        try {
+            let base64Data = '';
+            if (contentOrBlob instanceof Blob) {
+                const reader = new FileReader();
+                base64Data = await new Promise((resolve, reject) => {
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(contentOrBlob);
+                });
+            } else {
+                base64Data = btoa(unescape(encodeURIComponent(contentOrBlob)));
+            }
+            const payload = {
+                data: base64Data,
+                filename: cleanFilename,
+                mimeType: cleanMime
+            };
+            if (window.MedianJsBridge?.downloadFile) {
+                window.MedianJsBridge.downloadFile(payload);
+                return true;
+            }
+            if (window.median?.nativebridge?.downloadFile) {
+                window.median.nativebridge.downloadFile(payload);
+                return true;
+            }
+            if (window.median?.nativebridge?.saveFile) {
+                window.median.nativebridge.saveFile(payload);
+                return true;
+            }
+        } catch (bridgeErr) {
+            console.warn('[MedianBridge] Fallback error:', bridgeErr);
+        }
+    }
+
+    // 3. Web standard fallback
+    try {
+        const blob = contentOrBlob instanceof Blob 
+            ? contentOrBlob 
+            : new Blob([contentOrBlob], { type: cleanMime + ';charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = cleanFilename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        return true;
+    } catch (e) {
+        console.error('[saveNoteFile] Web download error:', e);
+        return false;
+    }
+};
+
+app.exportTXT = async function () {
     const note = this.getActiveNote();
     if (!note) return;
     const text = (note.title || '') + '\n\n' + Utils.formatNoteAsText(note.content);
     const filename = Utils.sanitizeFilename(note.title || 'note') + '.txt';
-    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    await this.saveNoteFile(filename, text, 'text/plain');
     this.closeDropdown('shareDropdown');
 };
 
@@ -3991,45 +4068,7 @@ app.exportPDF = async function () {
 
         renderFooter();
         const pdfBlob = doc.output('blob');
-
-        const downloadPdfBlob = async (blob) => {
-            const reader = new FileReader();
-            const base64Data = await new Promise((resolve, reject) => {
-                reader.onload = () => resolve(reader.result.split(',')[1]);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
-
-            const payload = {
-                data: base64Data,
-                filename,
-                mimeType: 'application/pdf'
-            };
-
-            if (window.MedianJsBridge?.downloadFile) {
-                window.MedianJsBridge.downloadFile(payload);
-                return;
-            }
-            if (window.median?.nativebridge?.downloadFile) {
-                window.median.nativebridge.downloadFile(payload);
-                return;
-            }
-            if (window.median?.nativebridge?.saveFile) {
-                window.median.nativebridge.saveFile(payload);
-                return;
-            }
-
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        };
-
-        await downloadPdfBlob(pdfBlob);
+        await this.saveNoteFile(filename, pdfBlob, 'application/pdf');
     } catch (err) {
         console.error('Export PDF failed', err);
         alert('Export to PDF failed: ' + (err && err.message ? err.message : 'Unknown error'));
@@ -4607,7 +4646,7 @@ app.decryptVisibleNotesOnly = async function () {
         return;
     }
 
-    const notes = this.notes;
+    const notes = this.getNotesToDisplay().slice(0, 15);
     for (const note of notes) {
         if (!note._decrypted && !note._previewDecrypted) {
             DecryptQueue.queuePreview(note.id);

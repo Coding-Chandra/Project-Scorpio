@@ -60,12 +60,15 @@
         </section>
 
         <section id="signup-section" class="auth-card" style="display: none;">
+            <div class="app-branding">
+                <img src="./app/src/assets/icons/logo.png" alt="Notoz Logo" class="app-logo">
+            </div>
             <h2>Create Your Notoz ID</h2>
             <form id="signup-form">
                 <div class="input-stack">
                     <input type="text" id="signup-display-name" placeholder="Name" required>
                     <input type="email" id="signup-email" placeholder="Email" required>
-                    <input type="password" id="signup-password" placeholder="Password (6+ chars)" required>
+                    <input type="password" id="signup-password" placeholder="Password (8+ chars)" required>
                 </div>
                 <button type="submit">Sign Up</button>
             </form>
@@ -74,7 +77,7 @@
             </div>
         </section>
 
-        <div id="auth-message"></div>
+        <div id="auth-message" role="status" aria-live="polite"></div>
     </main>
 
     <footer class="legal-footer">
