@@ -3867,6 +3867,136 @@ Utils.formatNoteAsText = function (content) {
         .join('\n');
 };
 
+Utils.formatNoteAsMarkdown = function (title, content) {
+    let md = title ? `# ${title.trim()}\n\n` : '';
+    if (!content) return md.trim();
+
+    const div = document.createElement('div');
+    div.innerHTML = content;
+
+    function walk(node) {
+        if (!node) return '';
+        if (node.nodeType === Node.TEXT_NODE) {
+            return node.textContent || '';
+        }
+        if (node.nodeType !== Node.ELEMENT_NODE) return '';
+
+        const tag = (node.tagName || '').toLowerCase();
+        let inner = '';
+        for (const child of node.childNodes) {
+            inner += walk(child);
+        }
+
+        switch (tag) {
+            case 'h1': return `\n# ${inner.trim()}\n\n`;
+            case 'h2': return `\n## ${inner.trim()}\n\n`;
+            case 'h3': return `\n### ${inner.trim()}\n\n`;
+            case 'h4': return `\n#### ${inner.trim()}\n\n`;
+            case 'h5': return `\n##### ${inner.trim()}\n\n`;
+            case 'h6': return `\n###### ${inner.trim()}\n\n`;
+            case 'strong':
+            case 'b': return inner ? `**${inner}**` : '';
+            case 'em':
+            case 'i': return inner ? `*${inner}*` : '';
+            case 'u': return inner ? `<u>${inner}</u>` : '';
+            case 's':
+            case 'strike':
+            case 'del': return inner ? `~~${inner}~~` : '';
+            case 'code': return inner ? `\`${inner}\`` : '';
+            case 'pre': return `\n\`\`\`\n${inner.trim()}\n\`\`\`\n\n`;
+            case 'blockquote': return `\n> ${inner.trim().replace(/\n/g, '\n> ')}\n\n`;
+            case 'li': return `\n- ${inner.trim()}`;
+            case 'ul':
+            case 'ol': return `\n${inner.trim()}\n\n`;
+            case 'p':
+            case 'div': return inner.trim() ? `\n${inner.trim()}\n\n` : '\n';
+            case 'br': return '\n';
+            case 'hr': return '\n---\n\n';
+            case 'a': {
+                const href = node.getAttribute('href') || '';
+                return `[${inner.trim() || href}](${href})`;
+            }
+            case 'img': {
+                const src = node.getAttribute('src') || '';
+                const alt = node.getAttribute('alt') || 'Note Image';
+                return `\n![${alt}](${src})\n\n`;
+            }
+            default:
+                return inner;
+        }
+    }
+
+    md += walk(div);
+    return md.replace(/\n{3,}/g, '\n\n').trim();
+};
+
+Utils.formatNoteAsHTML = function (title, content) {
+    const cleanTitle = (title || 'Note').trim();
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${Utils.escapeHtml(cleanTitle)}</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: #1a1a1a;
+    background: #ffffff;
+    padding: 32px 24px;
+    max-width: 760px;
+    margin: 0 auto;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { color: #f0f0f0; background: #121212; }
+    hr { border-color: #333; }
+    code { background: #222; }
+  }
+  h1.note-title {
+    font-size: 28px;
+    margin-bottom: 8px;
+    font-weight: 700;
+  }
+  hr.note-divider {
+    border: none;
+    border-top: 1px solid #e0e0e0;
+    margin: 16px 0 24px 0;
+  }
+  .note-content {
+    font-size: 16px;
+    word-break: break-word;
+  }
+  .note-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 12px 0;
+  }
+  .note-footer {
+    margin-top: 48px;
+    padding-top: 16px;
+    border-top: 1px solid #eee;
+    font-size: 12px;
+    color: #888;
+    text-align: center;
+  }
+  .note-footer a { color: #0071e3; text-decoration: none; }
+</style>
+</head>
+<body>
+  <h1 class="note-title">${Utils.escapeHtml(cleanTitle)}</h1>
+  <hr class="note-divider">
+  <div class="note-content">
+    ${content || ''}
+  </div>
+  <div class="note-footer">
+    Exported from <a href="https://notoz.netlify.app/">NOTOZ</a>
+  </div>
+</body>
+</html>`;
+};
+
 app.shareCopy = function () {
     const note = this.getActiveNote();
     if (!note) return;
@@ -4221,6 +4351,117 @@ app.exportPDF = async function () {
     }
 
     this.closeDropdown('shareDropdown');
+    this.closeDropdown('noteActionsMenu');
+};
+
+app.saveFileToDownloads = app.saveNoteFile;
+
+app.openDownloadSheet = function () {
+    const note = this.getActiveNote();
+    if (!note) {
+        if (window.showNotification) {
+            window.showNotification('No Note Selected', 'Open or select a note to download it.', 'warning');
+        } else {
+            alert('Please select a note to download.');
+        }
+        return;
+    }
+    const sheet = document.getElementById('downloadNoteActionSheet');
+    if (sheet) {
+        sheet.classList.add('show');
+    }
+    this.closeDropdown('shareDropdown');
+    this.closeDropdown('noteActionsMenu');
+};
+
+app.closeDownloadSheet = function (e) {
+    if (e && e.target && e.target !== document.getElementById('downloadNoteActionSheet') && !e.target.classList.contains('image-action-sheet-cancel')) {
+        return;
+    }
+    const sheet = document.getElementById('downloadNoteActionSheet');
+    if (sheet) {
+        sheet.classList.remove('show');
+    }
+};
+
+app.downloadActiveNoteAs = async function (format) {
+    const note = this.getActiveNote();
+    if (!note) {
+        if (window.showNotification) {
+            window.showNotification('No Note Selected', 'Open a note to download it.', 'warning');
+        }
+        this.closeDownloadSheet();
+        return;
+    }
+
+    const title = (note.title || 'Untitled Note').trim();
+    const baseName = Utils.sanitizeFilename(title) || 'note';
+
+    this.closeDownloadSheet();
+    this.closeDropdown('shareDropdown');
+    this.closeDropdown('noteActionsMenu');
+
+    switch ((format || '').toLowerCase()) {
+        case 'txt': {
+            const text = title + '\n\n' + Utils.formatNoteAsText(note.content);
+            await this.saveNoteFile(baseName + '.txt', text, 'text/plain');
+            break;
+        }
+        case 'md': {
+            const md = Utils.formatNoteAsMarkdown(title, note.content);
+            await this.saveNoteFile(baseName + '.md', md, 'text/markdown');
+            break;
+        }
+        case 'html': {
+            const html = Utils.formatNoteAsHTML(title, note.content);
+            await this.saveNoteFile(baseName + '.html', html, 'text/html');
+            break;
+        }
+        case 'pdf': {
+            await this.exportPDF();
+            break;
+        }
+        default:
+            console.warn('[downloadActiveNoteAs] Unknown format:', format);
+    }
+};
+
+app.downloadSelectedNotes = async function () {
+    const ids = Array.from(this.ui.selectedNoteIds || []);
+    if (!ids.length) {
+        if (window.showNotification) {
+            window.showNotification('No Notes Selected', 'Select at least one note to download.', 'warning');
+        } else {
+            alert('Select at least one note to download.');
+        }
+        return;
+    }
+
+    const selectedNotes = this.notes.filter(n => ids.includes(n.id));
+    if (!selectedNotes.length) return;
+
+    if (window.showNotification) {
+        window.showNotification('Downloading Notes', `Saving ${selectedNotes.length} note${selectedNotes.length > 1 ? 's' : ''} to Downloads/Notoz...`, 'info');
+    }
+
+    let successCount = 0;
+    for (const note of selectedNotes) {
+        try {
+            const title = (note.title || 'Untitled Note').trim();
+            const filename = (Utils.sanitizeFilename(title) || 'note') + '.txt';
+            const text = title + '\n\n' + Utils.formatNoteAsText(note.content);
+            const ok = await this.saveNoteFile(filename, text, 'text/plain');
+            if (ok) successCount++;
+        } catch (err) {
+            console.error('[downloadSelectedNotes] Failed to download note:', note.id, err);
+        }
+    }
+
+    if (window.showNotification) {
+        window.showNotification('Download Complete', `Saved ${successCount} note${successCount > 1 ? 's' : ''} to Downloads/Notoz.`, 'success');
+    }
+
+    this.toggleMultiSelect();
 };
 
 // ============================================================================
@@ -4486,7 +4727,19 @@ app.loading.init();
 
 const BackHandler = {
     intercept() {
-        // ── Priority 1: Close any open dialog first ──────────────────────
+        // ── Priority 1: Close any open dialog or action sheet first ──────
+        const downloadSheet = document.getElementById('downloadNoteActionSheet');
+        if (downloadSheet?.classList.contains('show')) {
+            app.closeDownloadSheet();
+            return true;
+        }
+
+        const imageSheet = document.getElementById('imageSourceActionSheet');
+        if (imageSheet?.classList.contains('show')) {
+            app.closeImageSourceSheet();
+            return true;
+        }
+
         const dialog = document.getElementById('appDialogOverlay');
         if (dialog?.classList.contains('show')) {
             AppDialog.close();
