@@ -1,8 +1,15 @@
 package app.notoz.android;
 
+import android.Manifest;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
 import android.view.Display;
 import android.view.Surface;
 import android.view.View;
@@ -13,16 +20,28 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.Toast;
 
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.view.WindowCompat;
 
 import com.getcapacitor.BridgeActivity;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 
 public class MainActivity extends BridgeActivity {
+
+    private static final int REQUEST_RECORD_AUDIO_PERMISSION = 712;
+    private String pendingSharedDataJson = null;
+    private SpeechRecognizer speechRecognizer = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -96,8 +115,8 @@ public class MainActivity extends BridgeActivity {
                     } catch (Exception ignored) {}
                 }
 
-                // Native Downloads Bridge -> Saves to Downloads/Notoz
-                webView.addJavascriptInterface(new NotozDownloadBridge(), "NotozNativeBridge");
+                // Native Feature Bridge: Downloads, Monet, Speech, Share
+                webView.addJavascriptInterface(new NotozNativeBridge(), "NotozNativeBridge");
 
                 WebSettings settings = webView.getSettings();
 
@@ -143,9 +162,248 @@ public class MainActivity extends BridgeActivity {
                 webView.setLayerType(WebView.LAYER_TYPE_HARDWARE, null);
             }
         }
+
+        // Process any initial share intent
+        handleIncomingShareIntent(getIntent());
     }
 
-    public class NotozDownloadBridge {
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleIncomingShareIntent(intent);
+    }
+
+    private void handleIncomingShareIntent(Intent intent) {
+        if (intent == null) return;
+        String action = intent.getAction();
+        String type = intent.getType();
+
+        if (Intent.ACTION_SEND.equals(action) && type != null) {
+            try {
+                JSONObject payload = new JSONObject();
+                payload.put("action", "share");
+                payload.put("type", type);
+
+                if (intent.hasExtra(Intent.EXTRA_SUBJECT)) {
+                    payload.put("title", intent.getStringExtra(Intent.EXTRA_SUBJECT));
+                } else if (intent.hasExtra(Intent.EXTRA_TITLE)) {
+                    payload.put("title", intent.getStringExtra(Intent.EXTRA_TITLE));
+                }
+
+                if (type.startsWith("text/")) {
+                    String sharedText = intent.getStringExtra(Intent.EXTRA_TEXT);
+                    payload.put("text", sharedText != null ? sharedText : "");
+                } else if (type.startsWith("image/")) {
+                    Uri imageUri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+                    if (imageUri != null) {
+                        JSONArray images = new JSONArray();
+                        String base64Data = readUriAsBase64(imageUri);
+                        if (base64Data != null) {
+                            images.put(base64Data);
+                        }
+                        payload.put("images", images);
+                    }
+                    if (intent.hasExtra(Intent.EXTRA_TEXT)) {
+                        payload.put("text", intent.getStringExtra(Intent.EXTRA_TEXT));
+                    }
+                }
+
+                pendingSharedDataJson = payload.toString();
+                dispatchPendingSharedData();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        } else if (Intent.ACTION_SEND_MULTIPLE.equals(action) && type != null && type.startsWith("image/")) {
+            try {
+                ArrayList<Uri> imageUris = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
+                if (imageUris != null && !imageUris.isEmpty()) {
+                    JSONObject payload = new JSONObject();
+                    payload.put("action", "share");
+                    payload.put("type", type);
+                    if (intent.hasExtra(Intent.EXTRA_TEXT)) {
+                        payload.put("text", intent.getStringExtra(Intent.EXTRA_TEXT));
+                    }
+                    JSONArray images = new JSONArray();
+                    for (Uri uri : imageUris) {
+                        String b64 = readUriAsBase64(uri);
+                        if (b64 != null) images.put(b64);
+                    }
+                    payload.put("images", images);
+                    pendingSharedDataJson = payload.toString();
+                    dispatchPendingSharedData();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private String readUriAsBase64(Uri uri) {
+        try (InputStream is = getContentResolver().openInputStream(uri);
+             ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            if (is == null) return null;
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = is.read(buf)) > 0) {
+                baos.write(buf, 0, n);
+            }
+            String mime = getContentResolver().getType(uri);
+            if (mime == null) mime = "image/png";
+            String b64 = android.util.Base64.encodeToString(baos.toByteArray(), android.util.Base64.NO_WRAP);
+            return "data:" + mime + ";base64," + b64;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private void dispatchPendingSharedData() {
+        if (pendingSharedDataJson == null || getBridge() == null) return;
+        WebView webView = getBridge().getWebView();
+        if (webView != null) {
+            final String json = pendingSharedDataJson;
+            runOnUiThread(() -> {
+                webView.evaluateJavascript(
+                    "if (window.onNotozNativeShare) { window.onNotozNativeShare(" + json + "); }",
+                    null
+                );
+            });
+        }
+    }
+
+    private void startListening(String language) {
+        if (speechRecognizer != null) {
+            try {
+                speechRecognizer.destroy();
+            } catch (Exception ignored) {}
+        }
+
+        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
+        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+        if (language != null && !language.trim().isEmpty()) {
+            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, language);
+        }
+
+        speechRecognizer.setRecognitionListener(new RecognitionListener() {
+            @Override
+            public void onReadyForSpeech(Bundle params) {
+                dispatchSpeechEvent("listening", "");
+            }
+
+            @Override
+            public void onBeginningOfSpeech() {
+                dispatchSpeechEvent("speaking", "");
+            }
+
+            @Override
+            public void onRmsChanged(float rmsdB) {}
+
+            @Override
+            public void onBufferReceived(byte[] buffer) {}
+
+            @Override
+            public void onEndOfSpeech() {
+                dispatchSpeechEvent("end", "");
+            }
+
+            @Override
+            public void onError(int error) {
+                dispatchSpeechEvent("error", String.valueOf(error));
+            }
+
+            @Override
+            public void onResults(Bundle results) {
+                ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                if (matches != null && !matches.isEmpty()) {
+                    dispatchSpeechTranscription(matches.get(0), true);
+                }
+            }
+
+            @Override
+            public void onPartialResults(Bundle partialResults) {
+                ArrayList<String> matches = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                if (matches != null && !matches.isEmpty()) {
+                    dispatchSpeechTranscription(matches.get(0), false);
+                }
+            }
+
+            @Override
+            public void onEvent(int eventType, Bundle params) {}
+        });
+
+        speechRecognizer.startListening(intent);
+    }
+
+    private void stopListening() {
+        if (speechRecognizer != null) {
+            try {
+                speechRecognizer.stopListening();
+                speechRecognizer.destroy();
+            } catch (Exception ignored) {}
+            speechRecognizer = null;
+        }
+        dispatchSpeechEvent("stopped", "");
+    }
+
+    private void dispatchSpeechEvent(String event, String payload) {
+        if (getBridge() == null) return;
+        WebView webView = getBridge().getWebView();
+        if (webView != null) {
+            runOnUiThread(() -> {
+                webView.evaluateJavascript(
+                    "if (window.onSpeechEvent) { window.onSpeechEvent('" + event + "', '" + payload + "'); }",
+                    null
+                );
+            });
+        }
+    }
+
+    private void dispatchSpeechTranscription(String text, boolean isFinal) {
+        if (getBridge() == null) return;
+        WebView webView = getBridge().getWebView();
+        if (webView != null) {
+            try {
+                JSONObject json = new JSONObject();
+                json.put("text", text);
+                json.put("isFinal", isFinal);
+                final String jsonStr = json.toString();
+                runOnUiThread(() -> {
+                    webView.evaluateJavascript(
+                        "if (window.onSpeechTranscription) { window.onSpeechTranscription(" + jsonStr + "); }",
+                        null
+                    );
+                });
+            } catch (Exception ignored) {}
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_RECORD_AUDIO_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                startListening(null);
+            } else {
+                dispatchSpeechEvent("permission_denied", "");
+            }
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        if (speechRecognizer != null) {
+            try {
+                speechRecognizer.destroy();
+            } catch (Exception ignored) {}
+            speechRecognizer = null;
+        }
+        super.onDestroy();
+    }
+
+    public class NotozNativeBridge {
+        // ── 1. Downloads Bridge ──
         @JavascriptInterface
         public boolean saveNoteToDownloads(String filename, String content, String mimeType, boolean isBase64) {
             try {
@@ -196,6 +454,73 @@ public class MainActivity extends BridgeActivity {
                 });
                 return false;
             }
+        }
+
+        // ── 2. Monet Dynamic Colors for MD3E (Android 12+ / API 31+) ──
+        @JavascriptInterface
+        public String getMonetColorsJson() {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    int accent1_500 = getResources().getColor(android.R.color.system_accent1_500, getTheme());
+                    int accent1_100 = getResources().getColor(android.R.color.system_accent1_100, getTheme());
+                    int accent1_900 = getResources().getColor(android.R.color.system_accent1_900, getTheme());
+                    int accent2_500 = getResources().getColor(android.R.color.system_accent2_500, getTheme());
+                    int neutral1_900 = getResources().getColor(android.R.color.system_neutral1_900, getTheme());
+
+                    int r = (accent1_500 >> 16) & 0xFF;
+                    int g = (accent1_500 >> 8) & 0xFF;
+                    int b = accent1_500 & 0xFF;
+
+                    JSONObject json = new JSONObject();
+                    json.put("supported", true);
+                    json.put("seedHex", String.format("#%02X%02X%02X", r, g, b));
+                    json.put("r", r);
+                    json.put("g", g);
+                    json.put("b", b);
+                    json.put("accent1_500", String.format("#%06X", (0xFFFFFF & accent1_500)));
+                    json.put("accent1_100", String.format("#%06X", (0xFFFFFF & accent1_100)));
+                    json.put("accent1_900", String.format("#%06X", (0xFFFFFF & accent1_900)));
+                    json.put("accent2_500", String.format("#%06X", (0xFFFFFF & accent2_500)));
+                    json.put("neutral1_900", String.format("#%06X", (0xFFFFFF & neutral1_900)));
+                    return json.toString();
+                }
+            } catch (Exception ignored) {}
+            return "{\"supported\":false}";
+        }
+
+        // ── 3. Speech-to-Text Dictation ──
+        @JavascriptInterface
+        public boolean isSpeechRecognitionAvailable() {
+            return SpeechRecognizer.isRecognitionAvailable(MainActivity.this);
+        }
+
+        @JavascriptInterface
+        public void startSpeechRecognition(String language) {
+            runOnUiThread(() -> {
+                if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.RECORD_AUDIO)
+                        != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(
+                        MainActivity.this,
+                        new String[]{Manifest.permission.RECORD_AUDIO},
+                        REQUEST_RECORD_AUDIO_PERMISSION
+                    );
+                    return;
+                }
+                MainActivity.this.startListening(language);
+            });
+        }
+
+        @JavascriptInterface
+        public void stopSpeechRecognition() {
+            runOnUiThread(() -> MainActivity.this.stopListening());
+        }
+
+        // ── 4. Shared Intent Payload ──
+        @JavascriptInterface
+        public String getPendingSharedData() {
+            String data = pendingSharedDataJson;
+            pendingSharedDataJson = null;
+            return data != null ? data : "";
         }
     }
 }

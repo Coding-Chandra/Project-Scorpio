@@ -20,6 +20,27 @@ window.addEventListener("message", (e) => {
   );
 });
 
+// Dynamic Monet for MD3E on Android 12+ (Pixel / Material You)
+(function applyMonetForMD3E() {
+  if (document.documentElement.getAttribute("data-ui") !== "md3e") return;
+  if (window.NotozNativeBridge && typeof window.NotozNativeBridge.getMonetColorsJson === "function") {
+    try {
+      const raw = window.NotozNativeBridge.getMonetColorsJson();
+      if (raw) {
+        const monet = JSON.parse(raw);
+        if (monet && monet.supported && monet.seedHex) {
+          const v = monet.seedHex.replace("#", "");
+          document.documentElement.style.setProperty(
+            "--md-seed",
+            `${parseInt(v.slice(0,2),16)},${parseInt(v.slice(2,4),16)},${parseInt(v.slice(4,6),16)}`
+          );
+          localStorage.setItem("md3e-seed", monet.seedHex);
+        }
+      }
+    } catch (e) {}
+  }
+})();
+
 
 (() => {
   // Only run when MD3E theme is active

@@ -4584,3 +4584,17 @@ body.dark .image-action-sheet-cancel {
     transition-delay: 0s;
   }
 }
+
+/* Voice Dictation Active Pulse */
+#voiceDictateBtn.listening {
+  color: #ff3b30 !important;
+  animation: voicePulse 1s ease-in-out infinite alternate !important;
+}
+#voiceDictateBtn.listening svg {
+  stroke: #ff3b30 !important;
+}
+@keyframes voicePulse {
+  0% { transform: scale(1); filter: drop-shadow(0 0 2px rgba(255,59,48,0.4)); }
+  100% { transform: scale(1.18); filter: drop-shadow(0 0 8px rgba(255,59,48,0.9)); }
+}
+

@@ -1341,37 +1341,46 @@ const app = {
         });
     },
 
-    async createNewNote() {
-        let targetFolderId = this.activeFolderId === 'all'
+    async createNewNote(initialData = {}) {
+        let targetFolderId = initialData.folder_id || (this.activeFolderId === 'all'
             ? (this.folders[0]?.id || null)
-            : this.activeFolderId;
+            : this.activeFolderId);
 
         if (!targetFolderId && this.folders.length === 0) return;
 
-        // Calculate next note number using only decrypted titles
-        const noteNumberMatch = this.notes.map(n => {
-            // Use decrypted title only; skip still-encrypted ones
-            const titleToCheck = (!n.title?.startsWith('enc:')) ? (n.title || '') : '';
-            const match = titleToCheck.match(/#(\d+)/);
-            return match ? parseInt(match[1]) : 0;
-        });
-        const highestNumber = noteNumberMatch.length > 0 ? Math.max(...noteNumberMatch) : 0;
-        const noteNumber = highestNumber + 1;
-        const plainTitle = `New Note #${noteNumber}`;
+        let plainTitle = initialData.title;
+        if (!plainTitle) {
+            // Calculate next note number using only decrypted titles
+            const noteNumberMatch = this.notes.map(n => {
+                // Use decrypted title only; skip still-encrypted ones
+                const titleToCheck = (!n.title?.startsWith('enc:')) ? (n.title || '') : '';
+                const match = titleToCheck.match(/#(\d+)/);
+                return match ? parseInt(match[1]) : 0;
+            });
+            const highestNumber = noteNumberMatch.length > 0 ? Math.max(...noteNumberMatch) : 0;
+            const noteNumber = highestNumber + 1;
+            plainTitle = `New Note #${noteNumber}`;
+        }
 
-        // Encrypt initial title before saving to Supabase
+        const initialContent = initialData.content || '';
+
+        // Encrypt initial title & content before saving to Supabase
         let encryptedTitle = plainTitle;
+        let encryptedContent = initialContent;
         try {
             encryptedTitle = await encryptWithMasterKey(plainTitle);
+            if (initialContent) {
+                encryptedContent = await encryptWithMasterKey(initialContent);
+            }
         } catch (e) {
-            console.error('[Encrypt] Could not encrypt initial title:', e);
+            console.error('[Encrypt] Could not encrypt initial note:', e);
             alert('Could not encrypt the new note. Please try again after your encryption key is available.');
             return;
         }
 
         const newNote = {
             title: encryptedTitle,
-            content: '',
+            content: encryptedContent,
             paper_style: 'blank',
             user_id: CURRENT_USER_ID,
             folder_id: targetFolderId,
@@ -1382,9 +1391,11 @@ const app = {
         if (!isOnline()) {
             try {
                 const savedNote = await saveNoteOffline(newNote);
-                // Store plain title locally so UI renders correctly
+                // Store plain title & content locally so UI renders correctly
                 savedNote.title = plainTitle;
+                savedNote.content = initialContent;
                 savedNote._decrypted = true;
+                savedNote._previewDecrypted = true;
                 this.notes.unshift(savedNote);
                 this.activeNoteId = savedNote.id;
                 this.renderNotesList();
@@ -1413,14 +1424,16 @@ const app = {
             return;
         }
 
-        // Store plain title in memory so the UI renders correctly immediately
+        // Store plain title & content in memory so the UI renders correctly immediately
         data.title = plainTitle;
+        data.content = initialContent;
         data._decrypted = true;
+        data._previewDecrypted = true;
         this.notes.unshift(data);
         this.activeNoteId = data.id;
 
-        // Mirror the server-side record (with encrypted title) to IndexedDB
-        this.mirrorNotesToIndexedDB([{ ...data, title: encryptedTitle }]);
+        // Mirror the server-side record (with encrypted title & content) to IndexedDB
+        this.mirrorNotesToIndexedDB([{ ...data, title: encryptedTitle, content: encryptedContent }]);
 
         if (this.activeFolderId !== (data.folder_id || 'all')) {
             this.setActiveFolder(data.folder_id || 'all');
@@ -2368,10 +2381,111 @@ app.closeImageSourceSheet = function (e) {
 app.chooseImageSource = async function (source) {
     app.closeImageSourceSheet();
 
-    if (source === "camera") {
+    if (source === "scan") {
+        await app.captureDocumentScan();
+    } else if (source === "camera") {
         await app.capturePhotoFromCamera();
     } else {
         await app.pickPhotoFromGallery();
+    }
+};
+
+function enhanceDocumentCanvas(canvas) {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imgData.data;
+
+    // High-contrast document enhancement: whiten paper backgrounds and deepen ink
+    for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+
+        let enhanced;
+        if (lum > 160) {
+            enhanced = Math.min(255, lum * 1.25);
+        } else if (lum < 115) {
+            enhanced = Math.max(0, lum * 0.72);
+        } else {
+            const norm = (lum - 115) / (160 - 115);
+            enhanced = 82 + norm * (200 - 82);
+        }
+
+        data[i] = enhanced;
+        data[i + 1] = enhanced;
+        data[i + 2] = enhanced;
+    }
+    ctx.putImageData(imgData, 0, 0);
+}
+
+app.captureDocumentScan = async function () {
+    const Camera = window.Capacitor?.Plugins?.Camera;
+    let imageBlob = null;
+
+    if (Camera) {
+        try {
+            const permStatus = await Camera.checkPermissions();
+            if (permStatus.camera !== "granted") {
+                const requested = await Camera.requestPermissions({ permissions: ["camera"] });
+                if (requested.camera !== "granted") {
+                    alert("Camera permission is required to scan documents.");
+                    return;
+                }
+            }
+
+            const photo = await Camera.getPhoto({
+                quality: 90,
+                allowEditing: false,
+                resultType: "uri",
+                source: "CAMERA"
+            });
+
+            if (photo && photo.webPath) {
+                const res = await fetch(photo.webPath);
+                imageBlob = await res.blob();
+            }
+        } catch (err) {
+            if (err && (err.message?.includes("cancelled") || err.message?.includes("User cancelled"))) {
+                return;
+            }
+            console.error("[Scan] Error capturing document:", err);
+            alert("Could not scan document: " + (err.message || err));
+            return;
+        }
+    } else {
+        const cameraInput = document.getElementById("cameraUploadInput");
+        if (cameraInput) {
+            cameraInput.dataset.isScan = "true";
+            cameraInput.click();
+            return;
+        }
+    }
+
+    if (!imageBlob) return;
+
+    try {
+        const bitmap = await createImageBitmap(imageBlob);
+        const canvas = document.createElement("canvas");
+        canvas.width = bitmap.width;
+        canvas.height = bitmap.height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(bitmap, 0, 0);
+        enhanceDocumentCanvas(canvas);
+
+        canvas.toBlob(async (scannedBlob) => {
+            if (!scannedBlob) return;
+            const file = new File([scannedBlob], "scan_" + Date.now() + ".webp", { type: "image/webp" });
+            await app.processAndInsertImage(file);
+            if (typeof showToast === 'function') {
+                showToast('Document scanned and enhanced!');
+            }
+        }, "image/webp", 0.90);
+    } catch (e) {
+        console.error('[Scan] Processing error:', e);
+        const file = new File([imageBlob], "scan_" + Date.now() + ".jpg", { type: "image/jpeg" });
+        await app.processAndInsertImage(file);
     }
 };
 
@@ -2659,7 +2773,30 @@ app.processAndInsertImage = async function (file) {
 app.handleImageFile = async function (input) {
     if (!input.files || !input.files[0]) return;
     const file = input.files[0];
-    await app.processAndInsertImage(file);
+    if (input.dataset.isScan === "true") {
+        input.dataset.isScan = "";
+        try {
+            const bitmap = await createImageBitmap(file);
+            const canvas = document.createElement("canvas");
+            canvas.width = bitmap.width;
+            canvas.height = bitmap.height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(bitmap, 0, 0);
+            enhanceDocumentCanvas(canvas);
+            canvas.toBlob(async (scannedBlob) => {
+                if (scannedBlob) {
+                    const enhancedFile = new File([scannedBlob], "scan_" + Date.now() + ".webp", { type: "image/webp" });
+                    await app.processAndInsertImage(enhancedFile);
+                } else {
+                    await app.processAndInsertImage(file);
+                }
+            }, "image/webp", 0.90);
+        } catch (e) {
+            await app.processAndInsertImage(file);
+        }
+    } else {
+        await app.processAndInsertImage(file);
+    }
     input.value = "";
 };
 
@@ -4830,6 +4967,163 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // ============================================================================
+// VOICE DICTATION & SPEECH-TO-TEXT
+// ============================================================================
+
+app.isVoiceDictating = false;
+app.speechRecognitionInstance = null;
+
+app.toggleVoiceDictation = function (e) {
+    if (e) e.preventDefault();
+    if (this.isVoiceDictating) {
+        this.stopVoiceDictation();
+    } else {
+        this.startVoiceDictation();
+    }
+};
+
+app.startVoiceDictation = function () {
+    const btn = document.getElementById('voiceDictateBtn');
+    const editor = document.getElementById('noteContentInput');
+    if (!editor) return;
+    editor.focus();
+
+    // 1. Android Native SpeechRecognizer Bridge
+    if (window.NotozNativeBridge && typeof window.NotozNativeBridge.startSpeechRecognition === 'function') {
+        this.isVoiceDictating = true;
+        if (btn) btn.classList.add('listening');
+        window.NotozNativeBridge.startSpeechRecognition("");
+        if (typeof showToast === 'function') showToast('Listening... Speak now');
+        return;
+    }
+
+    // 2. Web Speech API fallback
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRec) {
+        try {
+            const rec = new SpeechRec();
+            rec.continuous = true;
+            rec.interimResults = true;
+            rec.lang = navigator.language || 'en-US';
+
+            rec.onstart = () => {
+                this.isVoiceDictating = true;
+                if (btn) btn.classList.add('listening');
+                if (typeof showToast === 'function') showToast('Listening... Speak now');
+            };
+
+            rec.onresult = (evt) => {
+                let finalTrans = '';
+                for (let i = evt.resultIndex; i < evt.results.length; ++i) {
+                    if (evt.results[i].isFinal) {
+                        finalTrans += evt.results[i][0].transcript;
+                    }
+                }
+                if (finalTrans) {
+                    document.execCommand('insertText', false, ' ' + finalTrans.trim());
+                    this.onContentChange();
+                }
+            };
+
+            rec.onerror = (err) => {
+                console.warn('[WebSpeech] Dictation error:', err);
+                this.stopVoiceDictation();
+            };
+
+            rec.onend = () => {
+                this.stopVoiceDictation();
+            };
+
+            this.speechRecognitionInstance = rec;
+            rec.start();
+            return;
+        } catch (e) {
+            console.error('[WebSpeech] Initialization error:', e);
+        }
+    }
+
+    alert('Speech recognition is not supported on this browser/device.');
+};
+
+app.stopVoiceDictation = function () {
+    this.isVoiceDictating = false;
+    const btn = document.getElementById('voiceDictateBtn');
+    if (btn) btn.classList.remove('listening');
+
+    if (window.NotozNativeBridge && typeof window.NotozNativeBridge.stopSpeechRecognition === 'function') {
+        try { window.NotozNativeBridge.stopSpeechRecognition(); } catch (e) {}
+    }
+
+    if (this.speechRecognitionInstance) {
+        try { this.speechRecognitionInstance.stop(); } catch (e) {}
+        this.speechRecognitionInstance = null;
+    }
+};
+
+window.onSpeechEvent = function (event, payload) {
+    const btn = document.getElementById('voiceDictateBtn');
+    if (event === 'listening' || event === 'speaking') {
+        app.isVoiceDictating = true;
+        if (btn) btn.classList.add('listening');
+    } else if (event === 'end' || event === 'stopped') {
+        app.isVoiceDictating = false;
+        if (btn) btn.classList.remove('listening');
+    } else if (event === 'permission_denied') {
+        app.isVoiceDictating = false;
+        if (btn) btn.classList.remove('listening');
+        alert('Microphone permission is required for voice dictation.');
+    }
+};
+
+window.onSpeechTranscription = function (data) {
+    if (!data || !data.text) return;
+    if (data.isFinal) {
+        const editor = document.getElementById('noteContentInput');
+        if (editor) {
+            editor.focus();
+            document.execCommand('insertText', false, ' ' + data.text.trim());
+            app.onContentChange();
+        }
+    }
+};
+
+// ============================================================================
+// SHARE INTO NOTOZ (ANDROID SHARE TARGET & WEB INTENT)
+// ============================================================================
+
+app.handleIncomingShare = async function (sharedData) {
+    if (!sharedData || sharedData.action !== 'share') return;
+
+    let title = (sharedData.title || '').trim();
+    let text = (sharedData.text || '').trim();
+    let contentHtml = '';
+
+    if (text) {
+        contentHtml += Utils.escapeHtml(text).replace(/\n/g, '<br>');
+    }
+
+    if (sharedData.images && Array.isArray(sharedData.images) && sharedData.images.length > 0) {
+        for (const imgData of sharedData.images) {
+            contentHtml += `<p><img src="${imgData}" class="note-image" style="max-width:100%; border-radius:12px; margin: 8px 0;" /></p>`;
+        }
+    }
+
+    if (!title && text) {
+        const firstLine = text.split('\n')[0].slice(0, 40);
+        title = firstLine || 'Shared Note';
+    }
+
+    await this.createNewNote({
+        title: title || 'Shared Note',
+        content: contentHtml || ''
+    });
+
+    if (typeof showToast === 'function') {
+        showToast('New note created from shared content!');
+    }
+};
+
+// ============================================================================
 // PATCH INIT
 // ============================================================================
 
@@ -4843,6 +5137,26 @@ this.initializeRealtimeSync();
 
 // Handle shortcut URL parameters (e.g., ?action=new-note)
 this.handleActionParams();
+
+// Check for pending shared intent from Android Native Bridge
+if (window.NotozNativeBridge && typeof window.NotozNativeBridge.getPendingSharedData === 'function') {
+    try {
+        const raw = window.NotozNativeBridge.getPendingSharedData();
+        if (raw) {
+            const shared = JSON.parse(raw);
+            setTimeout(() => {
+                this.handleIncomingShare(shared);
+            }, 600);
+        }
+    } catch (e) {
+        console.warn('[Share] Error parsing pending share:', e);
+    }
+}
+
+// Handle runtime share while app is already in memory
+window.onNotozNativeShare = (sharedData) => {
+    this.handleIncomingShare(sharedData);
+};
 
 };
 
