@@ -23,6 +23,9 @@ window.addEventListener("message", (e) => {
 // Dynamic Monet for MD3E on Android 12+ (Pixel / Material You)
 (function applyMonetForMD3E() {
   if (document.documentElement.getAttribute("data-ui") !== "md3e") return;
+  // If user explicitly switched to a preset color, do NOT override it
+  if (localStorage.getItem("md3e-monet-enabled") === "false") return;
+
   if (window.NotozNativeBridge && typeof window.NotozNativeBridge.getMonetColorsJson === "function") {
     try {
       const raw = window.NotozNativeBridge.getMonetColorsJson();
@@ -35,6 +38,7 @@ window.addEventListener("message", (e) => {
             `${parseInt(v.slice(0,2),16)},${parseInt(v.slice(2,4),16)},${parseInt(v.slice(4,6),16)}`
           );
           localStorage.setItem("md3e-seed", monet.seedHex);
+          localStorage.setItem("md3e-monet-enabled", "true");
         }
       }
     } catch (e) {}

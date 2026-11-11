@@ -3507,11 +3507,17 @@ html[data-ui="nothing"] .notif{
     }
 
     .toolbar-scroll {
-        justify-content: space-evenly;
-        gap: 2px;
-        padding: 0 4px;
-        overflow-x: hidden;
-        overflow-y: hidden;
+        justify-content: flex-start !important;
+        gap: 6px !important;
+        padding: 0 10px !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none;
+    }
+
+    .toolbar-scroll::-webkit-scrollbar {
+        display: none;
     }
 
     .toolbar-group,
@@ -4585,16 +4591,41 @@ body.dark .image-action-sheet-cancel {
   }
 }
 
-/* Voice Dictation Active Pulse */
-#voiceDictateBtn.listening {
+/* Voice Dictation Active Pulse & Glow */
+#voiceDictateBtn,
+#selectionVoiceBtn {
+  position: relative;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#voiceDictateBtn svg,
+#selectionVoiceBtn svg {
+  stroke: var(--text-color, #888);
+  transition: stroke 0.2s ease, filter 0.2s ease;
+}
+
+[data-theme="dark"] #voiceDictateBtn svg,
+[data-theme="dark"] #selectionVoiceBtn svg {
+  stroke: rgba(255, 255, 255, 0.85);
+}
+
+#voiceDictateBtn.listening,
+#selectionVoiceBtn.listening {
   color: #ff3b30 !important;
-  animation: voicePulse 1s ease-in-out infinite alternate !important;
+  background: rgba(255, 59, 48, 0.16) !important;
+  border-color: rgba(255, 59, 48, 0.5) !important;
+  box-shadow: 0 0 12px rgba(255, 59, 48, 0.6), inset 0 0 4px rgba(255, 59, 48, 0.3) !important;
+  animation: voicePulse 0.9s ease-in-out infinite alternate !important;
 }
-#voiceDictateBtn.listening svg {
+
+#voiceDictateBtn.listening svg,
+#selectionVoiceBtn.listening svg {
   stroke: #ff3b30 !important;
+  filter: drop-shadow(0 0 4px #ff3b30);
 }
+
 @keyframes voicePulse {
   0% { transform: scale(1); filter: drop-shadow(0 0 2px rgba(255,59,48,0.4)); }
-  100% { transform: scale(1.18); filter: drop-shadow(0 0 8px rgba(255,59,48,0.9)); }
+  100% { transform: scale(1.15); filter: drop-shadow(0 0 10px rgba(255,59,48,0.95)); }
 }
 

@@ -1035,6 +1035,7 @@ const $uiMenu      = document.getElementById('uiPickerMenu');
 // leaked Material 3 Expressive color picker exposes (beyond just the
 // old blue/green/purple/sand/mono set).
 const md3ePresets = [
+  { hex:'monet', label:'System Monet', isMonet: true },
   { hex:'#4285F4', label:'Ocean'    },
   { hex:'#46707c', label:'Slate'    },
   { hex:'#6750A4', label:'Violet'   },
@@ -1193,8 +1194,13 @@ function updateStatus() {
   const ui = localStorage.getItem('ui-theme') || 'ios';
 
   if (ui === 'md3e') {
+    const isMonet = localStorage.getItem('md3e-monet-enabled') === 'true';
+    if (isMonet) {
+      $status.textContent = 'Active: System Monet (Dynamic Wallpaper Colors)';
+      return;
+    }
     const hex    = localStorage.getItem(MD3E_SEED_KEY) || '#6750A4';
-    const preset = md3ePresets.find(p => p.hex.toLowerCase() === hex.toLowerCase());
+    const preset = md3ePresets.find(p => !p.isMonet && p.hex.toLowerCase() === hex.toLowerCase());
     $status.textContent = preset ? `Active: ${preset.label}` : `Active: Custom (${hex})`;
     return;
   }
@@ -1212,25 +1218,68 @@ function updateStatus() {
    MD3E PRESET GRID
 ===================================================== */
 function buildPresetGrid() {
+  const isMonet = localStorage.getItem('md3e-monet-enabled') === 'true';
   const current = (localStorage.getItem(MD3E_SEED_KEY) || '#6750A4').toLowerCase();
 
-  $presetGrid.innerHTML = md3ePresets.map((p, i) => `
-    <div
-      class="preset-swatch${p.hex.toLowerCase() === current ? ' active' : ''}"
-      style="--i:${i}"
-      data-hex="${p.hex.toLowerCase()}"
-      role="listitem"
-      onclick="handlePresetTap('${p.hex}')"
-    >
-      <span class="swatch-dot" style="background:${p.hex};"></span>
-      <span class="swatch-label">${p.label}</span>
-    </div>
-  `).join('');
+  $presetGrid.innerHTML = md3ePresets.map((p, i) => {
+    const isActive = p.isMonet ? isMonet : (!isMonet && p.hex.toLowerCase() === current);
+    const dotBg = p.isMonet
+      ? 'background: conic-gradient(from 180deg at 50% 50%, #4285F4 0deg, #34A853 90deg, #FBBC05 180deg, #EA4335 270deg, #4285F4 360deg); box-shadow: 0 0 8px rgba(66, 133, 244, 0.4);'
+      : `background:${p.hex};`;
+    return `
+      <div
+        class="preset-swatch${isActive ? ' active' : ''}"
+        style="--i:${i}"
+        data-hex="${p.hex.toLowerCase()}"
+        role="listitem"
+        onclick="handlePresetTap('${p.hex}')"
+        title="${p.label}"
+      >
+        <span class="swatch-dot" style="${dotBg}"></span>
+        <span class="swatch-label">${p.label}</span>
+      </div>
+    `;
+  }).join('');
 
   updateStatus();
 }
 
 function handlePresetTap(hex) {
+  if (hex === 'monet') {
+    localStorage.setItem('md3e-monet-enabled', 'true');
+    let monetSeed = null;
+    try {
+      const bridge = window.parent?.NotozNativeBridge || window.NotozNativeBridge;
+      if (bridge && typeof bridge.getMonetColorsJson === 'function') {
+        const raw = bridge.getMonetColorsJson();
+        if (raw) {
+          const m = JSON.parse(raw);
+          if (m && m.seedHex) monetSeed = m.seedHex;
+        }
+      }
+    } catch (e) {}
+    if (!monetSeed) monetSeed = '#4285F4';
+
+    localStorage.setItem(MD3E_SEED_KEY, monetSeed);
+    applySeedVar(monetSeed);
+    applyResolvedTheme();
+
+    $presetGrid.querySelectorAll('.preset-swatch').forEach(el => {
+      el.classList.toggle('active', el.dataset.hex === 'monet');
+    });
+
+    updateStatus();
+    window.parent.postMessage({
+      type: 'SET_MD3E_COLOR',
+      color: monetSeed,
+      seed: monetSeed,
+      isMonet: true
+    }, window.location.origin);
+    return;
+  }
+
+  // Preset hex clicked -> switch back to preset color
+  localStorage.setItem('md3e-monet-enabled', 'false');
   localStorage.setItem(MD3E_SEED_KEY, hex);
   applySeedVar(hex);
   applyResolvedTheme();
@@ -1244,7 +1293,8 @@ function handlePresetTap(hex) {
   window.parent.postMessage({
     type: 'SET_MD3E_COLOR',
     color: hex,
-    seed: hex
+    seed: hex,
+    isMonet: false
   }, window.location.origin);
 }
 

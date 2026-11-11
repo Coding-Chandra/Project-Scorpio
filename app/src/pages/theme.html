@@ -656,13 +656,22 @@ h2:nth-of-type(2) { animation-delay: 0.15s; }
   </div>
 
   <div class="row" id="md3ePresets">
-    <div class="preset-row">
-      <span class="label-preset">Presets:</span>
-      <div class="preset blue"   onclick="setPreset('#4285F4')"></div>
-      <div class="preset green"  onclick="setPreset('#46707c')"></div>
-      <div class="preset purple" onclick="setPreset('#6750A4')"></div>
-      <div class="preset sand"   onclick="setPreset('#C2B280')"></div>
-      <div class="preset mono"   onclick="setPreset('#555555')"></div>
+    <div style="display:flex; flex-direction:column; gap:10px; width:100%;">
+      <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+        <span class="label-preset" style="font-weight:600;">MD3E Palette:</span>
+        <button id="monetSwitchBtn" type="button" onclick="toggleMonetTheme()" style="background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.22); border-radius:14px; padding:4px 11px; font-size:12px; color:var(--text); cursor:pointer; display:flex; align-items:center; gap:6px; transition:all 0.2s ease;">
+          <span style="display:inline-block; width:9px; height:9px; border-radius:50%; background:conic-gradient(from 180deg at 50% 50%, #4285F4 0deg, #34A853 90deg, #FBBC05 180deg, #EA4335 270deg, #4285F4 360deg);"></span>
+          <span id="monetSwitchLabel">System Monet</span>
+        </button>
+      </div>
+      <div class="preset-row">
+        <span class="label-preset">Presets:</span>
+        <div class="preset blue"   onclick="setPreset('#4285F4')" title="Ocean"></div>
+        <div class="preset green"  onclick="setPreset('#46707c')" title="Slate"></div>
+        <div class="preset purple" onclick="setPreset('#6750A4')" title="Violet"></div>
+        <div class="preset sand"   onclick="setPreset('#C2B280')" title="Sand"></div>
+        <div class="preset mono"   onclick="setPreset('#555555')" title="Graphite"></div>
+      </div>
     </div>
   </div>
 
@@ -720,6 +729,7 @@ h2:nth-of-type(2) { animation-delay: 0.15s; }
 const UI_KEY = "ui-theme";
 const MODE_KEY = "notozApp_theme";
 const SEED_KEY = "md3e-seed";
+const MONET_KEY = "md3e-monet-enabled";
 const LG_FILTER_KEY = "notozApp_lg_filter_enabled";
 const LEGACY_LG_FILTER_KEY = "notozApp_lg_filter_all_themes";
 if (localStorage.getItem(LG_FILTER_KEY) === null) {
@@ -753,10 +763,61 @@ function setMode(v) {
   window.parent.postMessage({ type: "SET_THEME", theme: v }, window.location.origin);
 }
 
+function updateMonetUI(isMonet) {
+  const btn = document.getElementById("monetSwitchBtn");
+  const label = document.getElementById("monetSwitchLabel");
+  if (!btn) return;
+  if (isMonet) {
+    btn.style.background = "rgba(66, 133, 244, 0.28)";
+    btn.style.borderColor = "rgba(66, 133, 244, 0.75)";
+    btn.style.boxShadow = "0 0 10px rgba(66, 133, 244, 0.4)";
+    if (label) label.textContent = "System Monet (Active)";
+    document.querySelectorAll(".preset").forEach(p => p.classList.remove("active"));
+  } else {
+    btn.style.background = "rgba(255,255,255,0.12)";
+    btn.style.borderColor = "rgba(255,255,255,0.22)";
+    btn.style.boxShadow = "none";
+    if (label) label.textContent = "System Monet";
+  }
+}
+
+function toggleMonetTheme() {
+  const currentlyMonet = localStorage.getItem(MONET_KEY) === "true";
+  if (currentlyMonet) {
+    // Switch back to preset colors
+    localStorage.setItem(MONET_KEY, "false");
+    const lastSeed = localStorage.getItem(SEED_KEY) || "#6750A4";
+    applySeed(lastSeed);
+    updateMonetUI(false);
+    window.parent.postMessage({ type: "SET_MD3E_COLOR", color: lastSeed, isMonet: false }, window.location.origin);
+  } else {
+    // Switch to system Monet dynamic colors
+    localStorage.setItem(MONET_KEY, "true");
+    let monetSeed = null;
+    try {
+      const bridge = window.parent?.NotozNativeBridge || window.NotozNativeBridge;
+      if (bridge && typeof bridge.getMonetColorsJson === "function") {
+        const raw = bridge.getMonetColorsJson();
+        if (raw) {
+          const m = JSON.parse(raw);
+          if (m && m.seedHex) monetSeed = m.seedHex;
+        }
+      }
+    } catch (e) {}
+    if (!monetSeed) monetSeed = "#4285F4";
+    localStorage.setItem(SEED_KEY, monetSeed);
+    applySeed(monetSeed);
+    updateMonetUI(true);
+    window.parent.postMessage({ type: "SET_MD3E_COLOR", color: monetSeed, isMonet: true }, window.location.origin);
+  }
+}
+
 function setPreset(hex) {
+  localStorage.setItem(MONET_KEY, "false");
   localStorage.setItem(SEED_KEY, hex);
   applySeed(hex);
-  window.parent.postMessage({ type: "SET_MD3E_COLOR", color: hex }, window.location.origin);
+  updateMonetUI(false);
+  window.parent.postMessage({ type: "SET_MD3E_COLOR", color: hex, isMonet: false }, window.location.origin);
 }
 
 function toggleLGFilter() {
@@ -818,13 +879,17 @@ function applyMode(v) {
 }
 
 function applySeed(hex) {
+  const isMonet = localStorage.getItem(MONET_KEY) === "true";
   const v = hex.replace("#", "");
   document.documentElement.style.setProperty(
     "--md-seed",
     `${parseInt(v.slice(0, 2), 16)},${parseInt(v.slice(2, 4), 16)},${parseInt(v.slice(4, 6), 16)}`
   );
   document.querySelectorAll(".preset").forEach(p => p.classList.remove("active"));
-  document.querySelector(`.preset[onclick*="${hex}"]`)?.classList.add("active");
+  if (!isMonet) {
+    document.querySelector(`.preset[onclick*="${hex}"]`)?.classList.add("active");
+  }
+  updateMonetUI(isMonet);
 }
 </script>
 

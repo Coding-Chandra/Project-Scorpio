@@ -268,7 +268,10 @@ public class MainActivity extends BridgeActivity {
             final String json = pendingSharedDataJson;
             runOnUiThread(() -> {
                 webView.evaluateJavascript(
-                    "if (window.onNotozNativeShare) { window.onNotozNativeShare(" + json + "); }",
+                    "(function(){" +
+                    "  try { sessionStorage.setItem('notoz_pending_share', JSON.stringify(" + json + ")); } catch(e){}" +
+                    "  if (typeof window.onNotozNativeShare === 'function') { window.onNotozNativeShare(" + json + "); }" +
+                    "})();",
                     null
                 );
             });

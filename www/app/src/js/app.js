@@ -1346,8 +1346,6 @@ const app = {
             ? (this.folders[0]?.id || null)
             : this.activeFolderId);
 
-        if (!targetFolderId && this.folders.length === 0) return;
-
         let plainTitle = initialData.title;
         if (!plainTitle) {
             // Calculate next note number using only decrypted titles
@@ -1400,10 +1398,13 @@ const app = {
                 this.activeNoteId = savedNote.id;
                 this.renderNotesList();
                 this.renderEditor();
-                if (this.ui.isMobile) {
-                    this.goToMobileView('editor');
+                if (this.ui.isMobile || window.innerWidth <= 1024) {
+                    this.ui.mobileView = 'editor';
+                    this.updateLayout();
                 }
-                document.getElementById('noteContentInput')?.focus();
+                setTimeout(() => {
+                    document.getElementById('noteContentInput')?.focus();
+                }, 100);
             } catch (e) {
                 console.error('[Offline] Failed to create note offline:', e);
                 alert('Failed to create note.');
@@ -1435,25 +1436,33 @@ const app = {
         // Mirror the server-side record (with encrypted title & content) to IndexedDB
         this.mirrorNotesToIndexedDB([{ ...data, title: encryptedTitle, content: encryptedContent }]);
 
-        if (this.activeFolderId !== (data.folder_id || 'all')) {
-            this.setActiveFolder(data.folder_id || 'all');
-        } else {
-            this.renderNotesList();
-            this.renderEditor();
-
-            setTimeout(() => {
-                const newNoteElement = document.querySelector(`[data-note-id="${data.id}"]`);
-                if (newNoteElement && window.AppAnimations) {
-                    AppAnimations.animateNoteCreate(newNoteElement, true);
-                }
-            }, 50);
+        if (this.activeFolderId !== 'all' && data.folder_id && this.activeFolderId !== data.folder_id) {
+            this.activeFolderId = data.folder_id;
+            const folderNameEl = document.getElementById('activeFolderName');
+            if (folderNameEl) {
+                folderNameEl.innerText = this.folders.find(f => f.id === data.folder_id)?.name || 'Notes';
+            }
+            this.renderFolders();
         }
 
-        if (this.ui.isMobile) {
-            this.goToMobileView('editor');
+        this.renderNotesList();
+        this.renderEditor();
+
+        setTimeout(() => {
+            const newNoteElement = document.querySelector(`[data-note-id="${data.id}"]`);
+            if (newNoteElement && window.AppAnimations) {
+                AppAnimations.animateNoteCreate(newNoteElement, true);
+            }
+        }, 50);
+
+        if (this.ui.isMobile || window.innerWidth <= 1024) {
+            this.ui.mobileView = 'editor';
+            this.updateLayout();
         }
 
-        document.getElementById('noteContentInput')?.focus();
+        setTimeout(() => {
+            document.getElementById('noteContentInput')?.focus();
+        }, 100);
     },
 
     async updateCurrentNote() {
@@ -4973,6 +4982,12 @@ document.addEventListener('DOMContentLoaded', function() {
 app.isVoiceDictating = false;
 app.speechRecognitionInstance = null;
 
+function updateVoiceDictationUI(isListening) {
+    document.querySelectorAll('#voiceDictateBtn, #selectionVoiceBtn').forEach(b => {
+        b.classList.toggle('listening', isListening);
+    });
+}
+
 app.toggleVoiceDictation = function (e) {
     if (e) e.preventDefault();
     if (this.isVoiceDictating) {
@@ -4983,7 +4998,6 @@ app.toggleVoiceDictation = function (e) {
 };
 
 app.startVoiceDictation = function () {
-    const btn = document.getElementById('voiceDictateBtn');
     const editor = document.getElementById('noteContentInput');
     if (!editor) return;
     editor.focus();
@@ -4991,7 +5005,7 @@ app.startVoiceDictation = function () {
     // 1. Android Native SpeechRecognizer Bridge
     if (window.NotozNativeBridge && typeof window.NotozNativeBridge.startSpeechRecognition === 'function') {
         this.isVoiceDictating = true;
-        if (btn) btn.classList.add('listening');
+        updateVoiceDictationUI(true);
         window.NotozNativeBridge.startSpeechRecognition("");
         if (typeof showToast === 'function') showToast('Listening... Speak now');
         return;
@@ -5008,7 +5022,7 @@ app.startVoiceDictation = function () {
 
             rec.onstart = () => {
                 this.isVoiceDictating = true;
-                if (btn) btn.classList.add('listening');
+                updateVoiceDictationUI(true);
                 if (typeof showToast === 'function') showToast('Listening... Speak now');
             };
 
@@ -5047,8 +5061,7 @@ app.startVoiceDictation = function () {
 
 app.stopVoiceDictation = function () {
     this.isVoiceDictating = false;
-    const btn = document.getElementById('voiceDictateBtn');
-    if (btn) btn.classList.remove('listening');
+    updateVoiceDictationUI(false);
 
     if (window.NotozNativeBridge && typeof window.NotozNativeBridge.stopSpeechRecognition === 'function') {
         try { window.NotozNativeBridge.stopSpeechRecognition(); } catch (e) {}
@@ -5061,16 +5074,15 @@ app.stopVoiceDictation = function () {
 };
 
 window.onSpeechEvent = function (event, payload) {
-    const btn = document.getElementById('voiceDictateBtn');
     if (event === 'listening' || event === 'speaking') {
         app.isVoiceDictating = true;
-        if (btn) btn.classList.add('listening');
+        updateVoiceDictationUI(true);
     } else if (event === 'end' || event === 'stopped') {
         app.isVoiceDictating = false;
-        if (btn) btn.classList.remove('listening');
+        updateVoiceDictationUI(false);
     } else if (event === 'permission_denied') {
         app.isVoiceDictating = false;
-        if (btn) btn.classList.remove('listening');
+        updateVoiceDictationUI(false);
         alert('Microphone permission is required for voice dictation.');
     }
 };
@@ -5091,8 +5103,20 @@ window.onSpeechTranscription = function (data) {
 // SHARE INTO NOTOZ (ANDROID SHARE TARGET & WEB INTENT)
 // ============================================================================
 
+app.isInitialized = false;
+app.pendingSharePayload = null;
+
 app.handleIncomingShare = async function (sharedData) {
     if (!sharedData || sharedData.action !== 'share') return;
+
+    if (!this.isInitialized || !CURRENT_USER_ID) {
+        console.log('[Share] App not fully initialized yet, saving to pending queue');
+        this.pendingSharePayload = sharedData;
+        try {
+            sessionStorage.setItem('notoz_pending_share', JSON.stringify(sharedData));
+        } catch (e) {}
+        return;
+    }
 
     let title = (sharedData.title || '').trim();
     let text = (sharedData.text || '').trim();
@@ -5118,6 +5142,18 @@ app.handleIncomingShare = async function (sharedData) {
         content: contentHtml || ''
     });
 
+    if (this.ui.isMobile || window.innerWidth <= 1024) {
+        this.ui.mobileView = 'editor';
+        this.updateLayout();
+    }
+
+    setTimeout(() => {
+        const editor = document.getElementById('noteContentInput');
+        if (editor) {
+            editor.focus();
+        }
+    }, 150);
+
     if (typeof showToast === 'function') {
         showToast('New note created from shared content!');
     }
@@ -5130,34 +5166,46 @@ app.handleIncomingShare = async function (sharedData) {
 const _originalInit = app.init;
 
 app.init = async function () {
+    await _originalInit.apply(this, arguments);
 
-await _originalInit.apply(this, arguments);
+    this.isInitialized = true;
+    this.initializeRealtimeSync();
 
-this.initializeRealtimeSync();
+    // Handle shortcut URL parameters (e.g., ?action=new-note)
+    this.handleActionParams();
 
-// Handle shortcut URL parameters (e.g., ?action=new-note)
-this.handleActionParams();
-
-// Check for pending shared intent from Android Native Bridge
-if (window.NotozNativeBridge && typeof window.NotozNativeBridge.getPendingSharedData === 'function') {
-    try {
-        const raw = window.NotozNativeBridge.getPendingSharedData();
-        if (raw) {
-            const shared = JSON.parse(raw);
-            setTimeout(() => {
-                this.handleIncomingShare(shared);
-            }, 600);
-        }
-    } catch (e) {
-        console.warn('[Share] Error parsing pending share:', e);
+    // Check for pending shared intent from memory, sessionStorage, or Native Bridge
+    let pendingShare = this.pendingSharePayload;
+    if (!pendingShare) {
+        try {
+            const rawSession = sessionStorage.getItem('notoz_pending_share');
+            if (rawSession) {
+                sessionStorage.removeItem('notoz_pending_share');
+                pendingShare = JSON.parse(rawSession);
+            }
+        } catch (e) {}
     }
-}
+    if (!pendingShare && window.NotozNativeBridge && typeof window.NotozNativeBridge.getPendingSharedData === 'function') {
+        try {
+            const raw = window.NotozNativeBridge.getPendingSharedData();
+            if (raw) {
+                pendingShare = JSON.parse(raw);
+            }
+        } catch (e) {
+            console.warn('[Share] Error parsing pending share:', e);
+        }
+    }
 
-// Handle runtime share while app is already in memory
-window.onNotozNativeShare = (sharedData) => {
-    this.handleIncomingShare(sharedData);
-};
+    if (pendingShare) {
+        setTimeout(() => {
+            this.handleIncomingShare(pendingShare);
+        }, 350);
+    }
 
+    // Handle runtime share while app is already running in memory
+    window.onNotozNativeShare = (sharedData) => {
+        this.handleIncomingShare(sharedData);
+    };
 };
 
 /**

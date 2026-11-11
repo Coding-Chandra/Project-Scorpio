@@ -11,6 +11,17 @@
     <script>
       (function () {
         try {
+          if (window.NotozNativeBridge && typeof window.NotozNativeBridge.getPendingSharedData === 'function') {
+            var raw = window.NotozNativeBridge.getPendingSharedData();
+            if (raw) {
+              sessionStorage.setItem('notoz_pending_share', raw);
+            }
+          }
+          window.onNotozNativeShare = function (data) {
+            try {
+              sessionStorage.setItem('notoz_pending_share', JSON.stringify(data));
+            } catch (e) {}
+          };
           for (var i = 0; i < localStorage.length; i++) {
             var k = localStorage.key(i);
             if (k && (k.indexOf('-auth-token') !== -1 || k.indexOf('sb-') !== -1)) {
