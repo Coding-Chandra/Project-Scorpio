@@ -15,6 +15,157 @@ const supabase = (() => {
 
 let currentUser = null;
 
+const OLD_STATIC_SALT = 'notesapp_v1_salt';
+const OLD_ITERATIONS = 200000;
+const NEW_ITERATIONS = 600000;
+
+function _b64Encode(buf) {
+    return btoa(String.fromCharCode(...new Uint8Array(buf)));
+}
+
+function _b64Decode(str) {
+    const bin = atob(str || '');
+    return new Uint8Array([...bin].map(character => character.charCodeAt(0)));
+}
+
+async function deriveKeyFromPassword(password, salt, iterations = NEW_ITERATIONS) {
+    const keyMaterial = await crypto.subtle.importKey(
+        'raw',
+        new TextEncoder().encode(password),
+        'PBKDF2',
+        false,
+        ['deriveKey']
+    );
+    return crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt: new TextEncoder().encode(salt), iterations, hash: 'SHA-256' },
+        keyMaterial,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt', 'decrypt']
+    );
+}
+
+function _genSaltB64(len = 16) {
+    return _b64Encode(crypto.getRandomValues(new Uint8Array(len)));
+}
+
+async function changePassword(currentPassword, newPassword) {
+    if (typeof newPassword !== 'string' || newPassword.length < 8) {
+        throw new Error('New password must be at least 8 characters.');
+    }
+    if (newPassword === currentPassword) {
+        throw new Error('New password must be different from your current password.');
+    }
+    if (!currentUser?.id) {
+        throw new Error('Your account could not be verified. Reload settings and try again.');
+    }
+
+    const { data: row, error: fetchError } = await supabase
+        .from('user_keys')
+        .select('encrypted_master_key, salt, kdf_iterations')
+        .eq('user_id', currentUser.id)
+        .maybeSingle();
+    if (fetchError) throw new Error('Could not load your encrypted notes key. Please try again.');
+    if (!row?.encrypted_master_key) {
+        throw new Error('Your encrypted notes key could not be found.');
+    }
+
+    let encryptedMasterKey;
+    try {
+        encryptedMasterKey = JSON.parse(row.encrypted_master_key);
+    } catch {
+        throw new Error('Your encrypted notes key could not be read. Please contact support.');
+    }
+
+    let masterKeyBytes;
+    try {
+        const currentSalt = row.salt || OLD_STATIC_SALT;
+        const currentIterations = row.salt
+            ? (row.kdf_iterations || NEW_ITERATIONS)
+            : OLD_ITERATIONS;
+        const currentDerivedKey = await deriveKeyFromPassword(
+            currentPassword,
+            currentSalt,
+            currentIterations
+        );
+        masterKeyBytes = new Uint8Array(await crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv: _b64Decode(encryptedMasterKey.iv) },
+            currentDerivedKey,
+            _b64Decode(encryptedMasterKey.data)
+        ));
+    } catch {
+        throw new Error('Current password is incorrect.');
+    }
+
+    const oldKeyValues = {
+        encrypted_master_key: row.encrypted_master_key,
+        salt: row.salt ?? null,
+        kdf_iterations: row.kdf_iterations ?? null
+    };
+    let keyWriteAttempted = false;
+
+    try {
+        const newSalt = _genSaltB64();
+        const newDerivedKey = await deriveKeyFromPassword(newPassword, newSalt, NEW_ITERATIONS);
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const encryptedBytes = await crypto.subtle.encrypt(
+            { name: 'AES-GCM', iv },
+            newDerivedKey,
+            masterKeyBytes
+        );
+        const newKeyValues = {
+            encrypted_master_key: JSON.stringify({ iv: _b64Encode(iv), data: _b64Encode(encryptedBytes) }),
+            salt: newSalt,
+            kdf_iterations: NEW_ITERATIONS
+        };
+
+        keyWriteAttempted = true;
+        const { data: updatedKey, error: keyUpdateError } = await supabase
+            .from('user_keys')
+            .update(newKeyValues)
+            .eq('user_id', currentUser.id)
+            .select('user_id')
+            .maybeSingle();
+        if (keyUpdateError || !updatedKey) {
+            throw new Error('Could not update your encrypted notes key. Please try again.');
+        }
+
+        let authError;
+        try {
+            ({ error: authError } = await supabase.auth.updateUser({ password: newPassword }));
+        } catch (error) {
+            authError = error;
+        }
+        if (authError) {
+            const authMessage = String(authError.message || '').toLowerCase();
+            const needsReauthentication = /reauth|nonce|secure password|recent authentication/.test(authMessage);
+            throw new Error(needsReauthentication
+                ? 'Your account requires fresh authentication before changing its password. Sign out and sign back in, then retry. Your notes key was restored.'
+                : 'Supabase could not update your password. Your notes key was restored; please try again.');
+        }
+    } catch (error) {
+        if (keyWriteAttempted) {
+            try {
+                const { data: restoredKey, error: rollbackError } = await supabase
+                    .from('user_keys')
+                    .update(oldKeyValues)
+                    .eq('user_id', currentUser.id)
+                    .select('user_id')
+                    .maybeSingle();
+                if (rollbackError || !restoredKey) {
+                    throw rollbackError || new Error('The previous key could not be confirmed.');
+                }
+            } catch {
+                throw new Error('The password change failed and restoring your notes key could not be confirmed. Keep this session open and contact support.');
+            }
+        }
+        throw error;
+    } finally {
+        masterKeyBytes.fill(0);
+    }
+}
+window.changePassword = changePassword;
+
 // Animation helper
 // Completion is guaranteed by a fallback timer: `animationend` never fires if the keyframes
 // are missing, reduced-motion is on, or the element is hidden. It also bubbles up from
@@ -339,6 +490,7 @@ const SettingsDialog = {
             if (this.modalBox) {
                 this.modalBox.style.transform = '';
                 this.modalBox.style.transformOrigin = 'center center';
+                this.modalBox.classList.remove('change-password-modal');
             }
             inputContainer.innerHTML = '';
             confirmBtn.disabled = false;
@@ -369,6 +521,126 @@ window.openModal = (title, message, btnText, btnColor, actionFn, sourceEl) => {
         confirmBtn.innerText = "Processing...";
         await actionFn();
     };
+};
+
+window.openChangePasswordModal = (trigger) => {
+    inputContainer.innerHTML = `
+        <form id="change-password-form" class="change-password-form" novalidate>
+            <label class="change-password-field">
+                <span>Current password</span>
+                <span class="change-password-input-wrap">
+                    <input id="change-current-password" type="password" autocomplete="current-password" required>
+                    <button class="change-password-toggle" type="button" data-password-toggle aria-controls="change-current-password" aria-label="Show password" aria-pressed="false">Show</button>
+                </span>
+            </label>
+            <label class="change-password-field">
+                <span>New password</span>
+                <span class="change-password-input-wrap">
+                    <input id="change-new-password" type="password" autocomplete="new-password" required>
+                    <button class="change-password-toggle" type="button" data-password-toggle aria-controls="change-new-password" aria-label="Show password" aria-pressed="false">Show</button>
+                </span>
+                <span id="change-new-password-error" class="change-password-field-error" aria-live="polite"></span>
+            </label>
+            <label class="change-password-field">
+                <span>Confirm new password</span>
+                <span class="change-password-input-wrap">
+                    <input id="change-confirm-password" type="password" autocomplete="new-password" required>
+                    <button class="change-password-toggle" type="button" data-password-toggle aria-controls="change-confirm-password" aria-label="Show password" aria-pressed="false">Show</button>
+                </span>
+                <span id="change-confirm-password-error" class="change-password-field-error" aria-live="polite"></span>
+            </label>
+            <p id="change-password-error" class="change-password-error" role="alert" hidden></p>
+        </form>
+    `;
+    document.getElementById('modal-title').textContent = 'Change Password';
+    document.getElementById('modal-message').textContent = 'Your notes stay encrypted with the same key.';
+    confirmBtn.innerText = 'Change Password';
+    confirmBtn.style.background = '';
+    confirmBtn.style.color = '';
+    confirmBtn.disabled = false;
+
+    const modalBox = overlay.querySelector('.modal-box');
+    modalBox?.classList.add('change-password-modal');
+    const form = document.getElementById('change-password-form');
+    const currentInput = document.getElementById('change-current-password');
+    const newInput = document.getElementById('change-new-password');
+    const confirmInput = document.getElementById('change-confirm-password');
+    const newError = document.getElementById('change-new-password-error');
+    const confirmError = document.getElementById('change-confirm-password-error');
+    const formError = document.getElementById('change-password-error');
+    const cancelButton = modalBox.querySelector('.modal-btn.btn-secondary');
+
+    const validate = () => {
+        newError.textContent = newInput.value && newInput.value.length < 8
+            ? 'Use at least 8 characters.'
+            : newInput.value && newInput.value === currentInput.value
+                ? 'Choose a password different from your current one.'
+                : '';
+        confirmError.textContent = confirmInput.value && confirmInput.value !== newInput.value
+            ? 'Passwords do not match.'
+            : '';
+        confirmBtn.disabled = !currentInput.value
+            || newInput.value.length < 8
+            || newInput.value === currentInput.value
+            || !confirmInput.value
+            || confirmInput.value !== newInput.value;
+    };
+
+    form.querySelectorAll('[data-password-toggle]').forEach(toggle => {
+        const input = document.getElementById(toggle.getAttribute('aria-controls'));
+        toggle.addEventListener('click', () => {
+            const isVisible = input.type === 'password';
+            input.type = isVisible ? 'text' : 'password';
+            toggle.textContent = isVisible ? 'Hide' : 'Show';
+            toggle.setAttribute('aria-label', isVisible ? 'Hide password' : 'Show password');
+            toggle.setAttribute('aria-pressed', String(isVisible));
+            input.focus({ preventScroll: true });
+        });
+    });
+
+    form.addEventListener('input', () => {
+        formError.hidden = true;
+        validate();
+    });
+    form.addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            if (!confirmBtn.disabled) confirmBtn.click();
+        }
+    });
+
+    openModal('Change Password', '', 'Change Password', 'var(--accent)', async () => {
+        validate();
+        if (confirmBtn.disabled) {
+            confirmBtn.innerText = 'Change Password';
+            validate();
+            return;
+        }
+
+        confirmBtn.disabled = true;
+        confirmBtn.innerText = 'Changing...';
+        form.querySelectorAll('input, button').forEach(element => { element.disabled = true; });
+        if (cancelButton) cancelButton.disabled = true;
+        try {
+            await changePassword(currentInput.value, newInput.value);
+        } catch (error) {
+            formError.textContent = error.message || 'Could not change your password. Please try again.';
+            formError.hidden = false;
+            confirmBtn.disabled = false;
+            confirmBtn.innerText = 'Change Password';
+            form.querySelectorAll('input, button').forEach(element => { element.disabled = false; });
+            if (cancelButton) cancelButton.disabled = false;
+            validate();
+            if (/Current password is incorrect/.test(formError.textContent)) currentInput.focus();
+            return;
+        }
+        form.reset();
+        if (cancelButton) cancelButton.disabled = false;
+        showNotification('Password changed', 'Your password was updated successfully.', 'success');
+        closeCustomModal();
+    }, trigger);
+    validate();
+    setTimeout(() => currentInput.focus({ preventScroll: true }), 0);
 };
 
 // Track which button triggered the modal

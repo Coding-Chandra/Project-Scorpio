@@ -1599,8 +1599,8 @@
             border-radius: 999px;
             background: rgba(255,255,255,0);
             color: var(--text-primary);
-            backdrop-filter: blur(var(--blur-xl)) saturate(1.5) var(--lg-filter-url);
-            -webkit-backdrop-filter: blur(var(--blur-xl)) saturate(1.5) var(--lg-filter-url);
+            backdrop-filter: blur(var(--blur-m)) saturate(1.5) var(--lg-filter-url);
+            -webkit-backdrop-filter: blur(var(--blur-m)) saturate(1.5) var(--lg-filter-url);
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
             vertical-align: top;
             z-index: 140;
@@ -2341,6 +2341,10 @@
 
             #notes-list-pane .notes-scroll-area {
                 padding-top: 76px;
+            }
+
+            html.capacitor-native #notes-list-pane .notes-scroll-area {
+                padding-top: 11vh;
             }
 
             #notes-list-pane .new-note-fab {
@@ -3529,7 +3533,6 @@ html[data-ui="nothing"] .notif{
     }
 
     .toolbar-scroll {
-        justify-content: flex-start !important;
         gap: 6px !important;
         padding: 0 10px !important;
         overflow-x: auto !important;
@@ -4150,10 +4153,9 @@ html.viewport-ready .pane { transition: none; }
 }
 
 /* ============================================================================
-   IMAGE SOURCE PICKER & DOWNLOAD NOTE ACTION SHEETS
+   IMAGE SOURCE PICKER ACTION SHEET
    ============================================================================ */
-#imageSourceActionSheet,
-#downloadNoteActionSheet {
+#imageSourceActionSheet {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.55);
@@ -4169,8 +4171,7 @@ html.viewport-ready .pane { transition: none; }
   transition: opacity 0.22s ease-out;
 }
 
-#imageSourceActionSheet.show,
-#downloadNoteActionSheet.show {
+#imageSourceActionSheet.show {
   display: flex !important;
   opacity: 1 !important;
   pointer-events: auto !important;
@@ -4186,8 +4187,7 @@ html.viewport-ready .pane { transition: none; }
   transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-#imageSourceActionSheet.show .image-action-sheet,
-#downloadNoteActionSheet.show .image-action-sheet {
+#imageSourceActionSheet.show .image-action-sheet {
   transform: translateY(0);
 }
 
@@ -4316,6 +4316,10 @@ body.dark .image-action-sheet-cancel {
   max-height: 360px;
   object-fit: contain;
   cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 

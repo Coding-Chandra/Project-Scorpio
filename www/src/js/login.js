@@ -31,6 +31,19 @@ const loginPasswordInput = document.getElementById('login-password');
 const loginButton = loginForm?.querySelector('button[type="submit"]');
 let messageTimeout;
 
+document.querySelectorAll('[data-password-toggle]').forEach(toggle => {
+    const input = document.getElementById(toggle.getAttribute('aria-controls'));
+    if (!input) return;
+
+    toggle.addEventListener('click', () => {
+        const isVisible = input.type === 'password';
+        input.type = isVisible ? 'text' : 'password';
+        toggle.setAttribute('aria-label', isVisible ? 'Hide password' : 'Show password');
+        toggle.setAttribute('aria-pressed', String(isVisible));
+        input.focus({ preventScroll: true });
+    });
+});
+
 function displayMessage(text, isError = false, action = null) {
     if (!messageEl) return;
     clearTimeout(messageTimeout);

@@ -103,6 +103,16 @@
         </div>
     </div>
     <div class="settings-group animate-list-item-in" style="animation-delay: 0.25s">
+        <div class="row clickable" onclick="window.parent.openChangePasswordModal()">
+            <span class="label">Change Password</span>
+            <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+        <div class="row clickable" onclick="window.parent.showDeleteModal()">
+            <span class="label" style="color: var(--accent1);">Delete Account</span>
+            <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+    </div>
+    <div class="settings-group animate-list-item-in" style="animation-delay: 0.25s">
         <div class="row clickable" onclick="window.promptImportFiles()" id="importFilesBtn">
             <span class="label" style="color: var(--accent);">Import File/Note</span>
             <svg class="chevron" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>

@@ -2343,6 +2343,10 @@
                 padding-top: 76px;
             }
 
+            html.capacitor-native #notes-list-pane .notes-scroll-area {
+                padding-top: 11vh;
+            }
+
             #notes-list-pane .new-note-fab {
                 display: flex;
             }
@@ -4150,10 +4154,9 @@ html.viewport-ready .pane { transition: none; }
 }
 
 /* ============================================================================
-   IMAGE SOURCE PICKER & DOWNLOAD NOTE ACTION SHEETS
+   IMAGE SOURCE PICKER ACTION SHEET
    ============================================================================ */
-#imageSourceActionSheet,
-#downloadNoteActionSheet {
+#imageSourceActionSheet {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.55);
@@ -4169,8 +4172,7 @@ html.viewport-ready .pane { transition: none; }
   transition: opacity 0.22s ease-out;
 }
 
-#imageSourceActionSheet.show,
-#downloadNoteActionSheet.show {
+#imageSourceActionSheet.show {
   display: flex !important;
   opacity: 1 !important;
   pointer-events: auto !important;
@@ -4186,8 +4188,7 @@ html.viewport-ready .pane { transition: none; }
   transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-#imageSourceActionSheet.show .image-action-sheet,
-#downloadNoteActionSheet.show .image-action-sheet {
+#imageSourceActionSheet.show .image-action-sheet {
   transform: translateY(0);
 }
 
@@ -4316,6 +4317,10 @@ body.dark .image-action-sheet-cancel {
   max-height: 360px;
   object-fit: contain;
   cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 

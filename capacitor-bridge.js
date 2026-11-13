@@ -145,18 +145,6 @@
         return;
       }
 
-      // 1c. Download Note Action Sheet
-      const downloadSheet = document.getElementById('downloadNoteActionSheet');
-      if (downloadSheet && downloadSheet.classList.contains('show')) {
-        if (window.app?.closeDownloadSheet) {
-          window.app.closeDownloadSheet();
-        } else {
-          downloadSheet.classList.remove('show');
-        }
-        console.log('[CapBridge] Back → closed DownloadNoteActionSheet.');
-        return;
-      }
-
       // 2. Settings Portal Layer (settings.html / settings.js)
       const portalLayer = document.getElementById('portal-layer');
       if (portalLayer && portalLayer.classList.contains('active')) {

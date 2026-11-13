@@ -95,7 +95,7 @@ const Utils = {
 };
 
 // ============================================================================
-// 3. CRYPTOGRAPHY & ENCRYPTION HELPERS (AES-GCM with password-derived key, plus session caching for performance)
+// 3. CRYPTOGRAPHY & ENCRYPTION HELPERS
 // ============================================================================
 
 function _b64Encode(buf) {
@@ -107,18 +107,10 @@ function _b64Decode(str) {
     return new Uint8Array([...bin].map(c => c.charCodeAt(0)));
 }
 
-// ============================================================================
-// CRYPTO UPGRADE — per-user salt + higher PBKDF2 iterations
-// Drop this in app.js, replacing the old deriveKeyFromPassword (section 3),
-// OR paste below it — these redefine the same names so order doesn't matter
-// as long as this runs after the original declarations.
-// ============================================================================
-
 const OLD_STATIC_SALT = 'notesapp_v1_salt';
 const OLD_ITERATIONS   = 200000;
 const NEW_ITERATIONS   = 600000;
 
-// Now requires an explicit salt — no silent default.
 async function deriveKeyFromPassword(password, salt, iterations = NEW_ITERATIONS) {
     const enc = new TextEncoder();
     const keyMaterial = await crypto.subtle.importKey(
@@ -135,100 +127,6 @@ async function deriveKeyFromPassword(password, salt, iterations = NEW_ITERATIONS
 
 function _genSaltB64(len = 16) {
     return _b64Encode(crypto.getRandomValues(new Uint8Array(len)));
-}
-
-/** Fetch this user's salt row. Returns { salt, iterations } — salt null = not migrated yet. */
-async function _getUserCryptoRow() {
-    const { data, error } = await supabaseClient
-        .from('user_keys')
-        .select('salt, kdf_iterations')
-        .eq('user_id', CURRENT_USER_ID)
-        .single();
-    if (error || !data) return { salt: null, iterations: OLD_ITERATIONS };
-    return { salt: data.salt, iterations: data.kdf_iterations || OLD_ITERATIONS };
-}
-
-/**
- * Call once right after successful login (from your login page),
- * BEFORE relying on encryptWithMasterKey/decryptWithMasterKey.
- * - If user already has a personal salt: just derives + caches the key.
- * - If not: decrypts master key with the old static salt, generates a new
- *   random salt, re-encrypts with 600k iterations, saves to user_keys.
- * Returns true on success, false if it couldn't proceed (wrong password etc).
- */
-async function migrateUserCrypto(password) {
-    const { salt, iterations } = await _getUserCryptoRow();
-
-    if (salt) {
-        // Already migrated — just derive session keys with personal salt.
-        const key = await deriveKeyFromPassword(password, salt, iterations);
-        _cachedDecryptKey = key;
-        _cachedEncryptKey = key;
-        return true;
-    }
-
-    // Not migrated yet: decrypt existing master key with OLD static salt/iterations.
-    const { data: row, error } = await supabaseClient
-        .from('user_keys')
-        .select('encrypted_master_key')
-        .eq('user_id', CURRENT_USER_ID)
-        .single();
-    if (error || !row?.encrypted_master_key) return false;
-
-    let masterKeyBytes;
-    try {
-        const oldDerived = await deriveKeyFromPassword(password, OLD_STATIC_SALT, OLD_ITERATIONS);
-        const encObj = JSON.parse(row.encrypted_master_key);
-        const iv = _b64Decode(encObj.iv);
-        const ct = _b64Decode(encObj.data);
-        masterKeyBytes = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, oldDerived, ct));
-    } catch (e) {
-        console.error('[Migrate] Wrong password or corrupt key:', e);
-        return false;
-    }
-
-    // Generate new personal salt, re-encrypt master key under it.
-    const newSalt = _genSaltB64();
-    const newDerived = await deriveKeyFromPassword(password, newSalt, NEW_ITERATIONS);
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, newDerived, masterKeyBytes);
-    const newEncrypted = JSON.stringify({ iv: _b64Encode(iv), data: _b64Encode(ct) });
-
-    const { error: updateErr } = await supabaseClient
-        .from('user_keys')
-        .update({
-            encrypted_master_key: newEncrypted,
-            salt: newSalt,
-            kdf_iterations: NEW_ITERATIONS
-        })
-        .eq('user_id', CURRENT_USER_ID);
-
-    if (updateErr) {
-        console.error('[Migrate] Failed to save new salt:', updateErr);
-        return false; // user still works off old salt next time; safe to retry later
-    }
-
-    _cachedDecryptKey = newDerived;
-    _cachedEncryptKey = newDerived;
-    console.log('[Migrate] User upgraded to personal salt + 600k iterations.');
-    return true;
-}
-
-window.migrateUserCrypto = migrateUserCrypto;
-
-async function encryptMasterKey(masterKeyBytes, password) {
-    const derived = await deriveKeyFromPassword(password);
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, derived, masterKeyBytes);
-    return { iv: _b64Encode(iv), data: _b64Encode(ct) };
-}
-
-async function decryptMasterKey(encObj, password) {
-    const derived = await deriveKeyFromPassword(password);
-    const iv = _b64Decode(encObj.iv);
-    const ct = _b64Decode(encObj.data);
-    const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, derived, ct);
-    return new Uint8Array(decrypted);
 }
 
 // ---------------------------------------------------------
@@ -384,7 +282,8 @@ const _decryptCache = new Map(); // noteId → { title, content, preview }
 // Two-lane queue:
 //   lane 0 = urgent   (note the user just opened)
 //   lane 1 = normal   (full content, background, newest→oldest)
-// Max 2 concurrent AES-GCM ops. Runs in requestIdleCallback when idle.
+// Max 2 concurrent AES-GCM ops. Urgent work starts immediately; background work
+// waits for an idle callback when available.
 // ============================================================================
 
 const DecryptQueue = (() => {
@@ -392,7 +291,7 @@ const DecryptQueue = (() => {
     const _normal  = [];   // same shape
     let _running   = 0;
     const MAX_CONCURRENT = 2;
-    let _idleHandle = null;
+    let _scheduledRun = null;
     let _aborted = false;
 
     function _enqueue(lane, noteId, type) {
@@ -406,16 +305,36 @@ const DecryptQueue = (() => {
     }
 
     function _scheduleRun() {
-        if (_idleHandle) return;
-        if (typeof requestIdleCallback !== 'undefined') {
-            _idleHandle = requestIdleCallback(_run, { timeout: 800 });
+        if (_running >= MAX_CONCURRENT) return;
+        const urgent = _urgent.length > 0;
+
+        if (_scheduledRun) {
+            if (!urgent || !_scheduledRun.isIdle) return;
+            if (typeof cancelIdleCallback === 'function') {
+                cancelIdleCallback(_scheduledRun.id);
+            }
+            _scheduledRun = null;
+        }
+
+        const scheduledRun = { id: null, isIdle: false };
+        _scheduledRun = scheduledRun;
+
+        if (urgent) {
+            scheduledRun.id = setTimeout(() => _run(undefined, scheduledRun), 0);
+        } else if (typeof requestIdleCallback !== 'undefined') {
+            scheduledRun.isIdle = true;
+            scheduledRun.id = requestIdleCallback(
+                deadline => _run(deadline, scheduledRun),
+                { timeout: 800 }
+            );
         } else {
-            _idleHandle = setTimeout(_run, 0);
+            scheduledRun.id = setTimeout(() => _run(undefined, scheduledRun), 0);
         }
     }
 
-    async function _run(deadline) {
-        _idleHandle = null;
+    async function _run(deadline, scheduledRun) {
+        if (_scheduledRun !== scheduledRun) return;
+        _scheduledRun = null;
         if (_aborted) return;
 
         // Drain as many as we can within the idle window (or just run if setTimeout)
@@ -565,10 +484,15 @@ const DecryptQueue = (() => {
             _aborted = true;
             _urgent.length = 0;
             _normal.length = 0;
-            if (_idleHandle) {
-                if (typeof cancelIdleCallback !== 'undefined') cancelIdleCallback(_idleHandle);
-                else clearTimeout(_idleHandle);
-                _idleHandle = null;
+            if (_scheduledRun) {
+                if (_scheduledRun.isIdle) {
+                    if (typeof cancelIdleCallback === 'function') {
+                        cancelIdleCallback(_scheduledRun.id);
+                    }
+                } else {
+                    clearTimeout(_scheduledRun.id);
+                }
+                _scheduledRun = null;
             }
         },
 
@@ -1054,13 +978,19 @@ const app = {
             this.updateCurrentNote();
         });
 
-        document.addEventListener('click', (e) => {
+        const closeMenusOutsideInteraction = (e) => {
             this.handleDropdownClose('shareDropdown', 'shareBtn', e);
             this.handleDropdownClose('textStyleDropdown', 'textStyleBtn', e);
             this.handleMenuCloseOnly('noteActionsMenu', e);
             this.handleMenuCloseOnly('noteMoveMenu', e);
             this.handleMenuCloseOnly('folderActionsMenu', e);
             this.handleDropdownClose('accountDropdown', 'accountBtn', e);
+        };
+        ['click', 'touchstart', 'touchmove'].forEach((eventName) => {
+            document.addEventListener(eventName, closeMenusOutsideInteraction, {
+                capture: true,
+                passive: eventName !== 'click'
+            });
         });
 
         document.addEventListener('keydown', (e) => {
@@ -1403,7 +1333,7 @@ const app = {
                     this.updateLayout();
                 }
                 setTimeout(() => {
-                    document.getElementById('noteContentInput')?.focus();
+                    focusNoteEditorForEditing();
                 }, 100);
             } catch (e) {
                 console.error('[Offline] Failed to create note offline:', e);
@@ -1461,7 +1391,7 @@ const app = {
         }
 
         setTimeout(() => {
-            document.getElementById('noteContentInput')?.focus();
+            focusNoteEditorForEditing();
         }, 100);
     },
 
@@ -2253,7 +2183,7 @@ app.insertCheckbox = function () {
     const checkboxHtml = '<span class="custom-checkbox" contenteditable="false"></span>&nbsp;';
 
     if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
-        contentEl.focus();
+        focusNoteEditorForEditing();
         document.execCommand('insertHTML', false, checkboxHtml);
         this.updateCurrentNote();
         return;
@@ -2264,7 +2194,7 @@ app.insertCheckbox = function () {
     if (common.nodeType === 3) common = common.parentNode;
 
     if (!contentEl.contains(common)) {
-        contentEl.focus();
+        focusNoteEditorForEditing();
         document.execCommand('insertHTML', false, checkboxHtml);
         this.updateCurrentNote();
         return;
@@ -2272,7 +2202,7 @@ app.insertCheckbox = function () {
 
     const selectedText = sel.toString();
     if (!selectedText.trim()) {
-        contentEl.focus();
+        focusNoteEditorForEditing();
         document.execCommand('insertHTML', false, checkboxHtml);
         this.updateCurrentNote();
         return;
@@ -2285,7 +2215,7 @@ app.insertCheckbox = function () {
         html += `<div><span class="custom-checkbox" contenteditable="false"></span>&nbsp;${safe}</div>`;
     }
 
-    contentEl.focus();
+    focusNoteEditorForEditing();
     document.execCommand('insertHTML', false, html);
     this.updateCurrentNote();
 };
@@ -2293,7 +2223,7 @@ app.insertCheckbox = function () {
 app.applyTextStyle = function (kind) {
     const contentEl = document.getElementById('noteContentInput');
     if (!contentEl) return;
-    contentEl.focus();
+    focusNoteEditorForEditing();
 
     const blockTagMap = {
         'title': 'h1',
@@ -2690,28 +2620,6 @@ function processImageToWebP(blob, maxDimension = 2400, quality = 1.0) {
     });
 }
 
-// ── Step 4: Upload to Supabase Storage ──────────────────────────────────
-async function uploadImageToSupabase(blob, mimeType) {
-    const ext = mimeType === 'image/webp' ? 'webp' : mimeType === 'image/png' ? 'png' : 'jpg';
-    const filename = `${CURRENT_USER_ID}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-
-    const { data, error } = await supabaseClient.storage
-        .from('notoz-images')
-        .upload(filename, blob, {
-            contentType: mimeType,
-            cacheControl: '31536000',               // cache for 1 year
-            upsert: false
-        });
-
-    if (error) throw new Error(`Storage upload failed: ${error.message}`);
-
-    const { data: urlData } = supabaseClient.storage
-        .from('notoz-images')
-        .getPublicUrl(data.path);
-
-    return urlData.publicUrl;
-}
-
 // ── Process & insert image into current note ─────────────────────────────
 app.processAndInsertImage = async function (file) {
     if (!file) return;
@@ -2723,7 +2631,7 @@ app.processAndInsertImage = async function (file) {
     }
 
     const contentEl = document.getElementById("noteContentInput");
-    contentEl.focus();
+    focusNoteEditorWithoutKeyboard();
 
     const placeholderId = "img-placeholder-" + Date.now();
     document.execCommand("insertHTML", false,
@@ -2742,19 +2650,19 @@ app.processAndInsertImage = async function (file) {
         // ── 2 & 3. Resize if huge + convert to WebP ──
         const { blob: finalBlob, mimeType } = await processImageToWebP(processedBlob);
 
-        // ── 4. Upload to Supabase Storage and get URL ──
-        let imageUrl;
-        if (isOnline()) {
-            imageUrl = await uploadImageToSupabase(finalBlob, mimeType);
-        } else {
-            console.warn("[ImageUpload] Offline — falling back to base64");
-            imageUrl = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onerror = reject;
-                reader.onload = (e) => resolve(e.target.result);
-                reader.readAsDataURL(finalBlob);
-            });
-        }
+        // ── 4. Encode as base64 so the image is saved inside the encrypted note ──
+        const imageUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onerror = () => reject(reader.error || new Error("Image encoding failed."));
+            reader.onload = () => {
+                if (typeof reader.result !== "string") {
+                    reject(new Error("Image encoding returned invalid data."));
+                    return;
+                }
+                resolve(reader.result);
+            };
+            reader.readAsDataURL(finalBlob);
+        });
 
         // ── Insert image into note ──
         const placeholder = document.getElementById(placeholderId);
@@ -2763,7 +2671,7 @@ app.processAndInsertImage = async function (file) {
         if (placeholder) {
             placeholder.outerHTML = imgHtml;
         } else {
-            contentEl.focus();
+            focusNoteEditorWithoutKeyboard();
             document.execCommand("insertHTML", false, imgHtml);
         }
 
@@ -4356,76 +4264,6 @@ app.exportPDF = async function () {
 
 app.saveFileToDownloads = app.saveNoteFile;
 
-app.openDownloadSheet = function () {
-    const note = this.getActiveNote();
-    if (!note) {
-        if (window.showNotification) {
-            window.showNotification('No Note Selected', 'Open or select a note to download it.', 'warning');
-        } else {
-            alert('Please select a note to download.');
-        }
-        return;
-    }
-    const sheet = document.getElementById('downloadNoteActionSheet');
-    if (sheet) {
-        sheet.classList.add('show');
-    }
-    this.closeDropdown('shareDropdown');
-    this.closeDropdown('noteActionsMenu');
-};
-
-app.closeDownloadSheet = function (e) {
-    if (e && e.target && e.target !== document.getElementById('downloadNoteActionSheet') && !e.target.classList.contains('image-action-sheet-cancel')) {
-        return;
-    }
-    const sheet = document.getElementById('downloadNoteActionSheet');
-    if (sheet) {
-        sheet.classList.remove('show');
-    }
-};
-
-app.downloadActiveNoteAs = async function (format) {
-    const note = this.getActiveNote();
-    if (!note) {
-        if (window.showNotification) {
-            window.showNotification('No Note Selected', 'Open a note to download it.', 'warning');
-        }
-        this.closeDownloadSheet();
-        return;
-    }
-
-    const title = (note.title || 'Untitled Note').trim();
-    const baseName = Utils.sanitizeFilename(title) || 'note';
-
-    this.closeDownloadSheet();
-    this.closeDropdown('shareDropdown');
-    this.closeDropdown('noteActionsMenu');
-
-    switch ((format || '').toLowerCase()) {
-        case 'txt': {
-            const text = title + '\n\n' + Utils.formatNoteAsText(note.content);
-            await this.saveNoteFile(baseName + '.txt', text, 'text/plain');
-            break;
-        }
-        case 'md': {
-            const md = Utils.formatNoteAsMarkdown(title, note.content);
-            await this.saveNoteFile(baseName + '.md', md, 'text/markdown');
-            break;
-        }
-        case 'html': {
-            const html = Utils.formatNoteAsHTML(title, note.content);
-            await this.saveNoteFile(baseName + '.html', html, 'text/html');
-            break;
-        }
-        case 'pdf': {
-            await this.exportPDF();
-            break;
-        }
-        default:
-            console.warn('[downloadActiveNoteAs] Unknown format:', format);
-    }
-};
-
 app.downloadSelectedNotes = async function () {
     const ids = Array.from(this.ui.selectedNoteIds || []);
     if (!ids.length) {
@@ -4473,6 +4311,110 @@ const selectionToolbar = document.getElementById('selectionToolbar');
 const noteContentEl = document.getElementById('noteContentInput');
 const HIGHLIGHT_HEX = getComputedStyle(document.documentElement)
     .getPropertyValue('--highlight-color').trim() || '#fff3a0';
+let editorTouchGesture = null;
+let editorTapExpiresAt = 0;
+
+function focusNoteEditorForEditing() {
+    if (!noteContentEl) return;
+
+    const selection = window.getSelection();
+    const savedRange = selection?.rangeCount ? selection.getRangeAt(0).cloneRange() : null;
+    const shouldRefocus = document.activeElement === noteContentEl;
+
+    noteContentEl.setAttribute('inputmode', 'text');
+    if (shouldRefocus) noteContentEl.blur();
+    noteContentEl.focus({ preventScroll: true });
+
+    if (savedRange && noteContentEl.contains(savedRange.commonAncestorContainer)) {
+        selection.removeAllRanges();
+        selection.addRange(savedRange);
+    }
+}
+
+function focusNoteEditorWithoutKeyboard() {
+    if (!noteContentEl) return;
+
+    const selection = window.getSelection();
+    const savedRange = selection?.rangeCount ? selection.getRangeAt(0).cloneRange() : null;
+    const shouldRefocus = noteContentEl.getAttribute('inputmode') !== 'none' &&
+        document.activeElement === noteContentEl;
+    noteContentEl.setAttribute('inputmode', 'none');
+    if (shouldRefocus) noteContentEl.blur();
+    noteContentEl.focus({ preventScroll: true });
+
+    if (savedRange && noteContentEl.contains(savedRange.commonAncestorContainer)) {
+        selection.removeAllRanges();
+        selection.addRange(savedRange);
+    }
+}
+
+function beginEditorTouchGesture(x, y, id) {
+    noteContentEl.setAttribute('inputmode', 'none');
+    editorTapExpiresAt = 0;
+    editorTouchGesture = { x, y, id, startedAt: Date.now(), moved: false };
+}
+
+function moveEditorTouchGesture(x, y, id) {
+    if (!editorTouchGesture || editorTouchGesture.id !== id) return;
+    if (Math.hypot(x - editorTouchGesture.x, y - editorTouchGesture.y) > 12) {
+        editorTouchGesture.moved = true;
+    }
+}
+
+function finishEditorTouchGesture(id, cancelled = false) {
+    if (!editorTouchGesture || editorTouchGesture.id !== id) return;
+
+    const gesture = editorTouchGesture;
+    editorTouchGesture = null;
+    editorTapExpiresAt = !cancelled && !gesture.moved && Date.now() - gesture.startedAt < 450
+        ? Date.now() + 1000
+        : 0;
+}
+
+if (noteContentEl && 'PointerEvent' in window) {
+    noteContentEl.addEventListener('pointerdown', (event) => {
+        if ((event.pointerType !== 'touch' && event.pointerType !== 'pen') || isImageTarget(event.target)) return;
+        beginEditorTouchGesture(event.clientX, event.clientY, event.pointerId);
+    }, { passive: true });
+
+    document.addEventListener('pointermove', (event) => {
+        moveEditorTouchGesture(event.clientX, event.clientY, event.pointerId);
+    }, { passive: true });
+
+    document.addEventListener('pointerup', (event) => {
+        finishEditorTouchGesture(event.pointerId);
+    }, { passive: true });
+
+    document.addEventListener('pointercancel', (event) => {
+        finishEditorTouchGesture(event.pointerId, true);
+    }, { passive: true });
+} else if (noteContentEl) {
+    noteContentEl.addEventListener('touchstart', (event) => {
+        if (isImageTarget(event.target)) return;
+        const touch = event.changedTouches[0];
+        if (touch) beginEditorTouchGesture(touch.clientX, touch.clientY, touch.identifier);
+    }, { passive: true });
+
+    document.addEventListener('touchmove', (event) => {
+        if (!editorTouchGesture) return;
+        const touch = Array.from(event.changedTouches).find(item => item.identifier === editorTouchGesture.id);
+        if (touch) moveEditorTouchGesture(touch.clientX, touch.clientY, touch.identifier);
+    }, { passive: true });
+
+    document.addEventListener('touchend', (event) => {
+        if (!editorTouchGesture) return;
+        if (Array.from(event.changedTouches).some(item => item.identifier === editorTouchGesture.id)) {
+            finishEditorTouchGesture(editorTouchGesture.id);
+        }
+    }, { passive: true });
+
+    document.addEventListener('touchcancel', (event) => {
+        if (!editorTouchGesture) return;
+        if (Array.from(event.changedTouches).some(item => item.identifier === editorTouchGesture.id)) {
+            finishEditorTouchGesture(editorTouchGesture.id, true);
+        }
+    }, { passive: true });
+}
 
 function hexToRgbString(hex) {
     const clean = hex.replace('#', '');
@@ -4492,7 +4434,23 @@ function getSelectionRect() {
     return rects[0];
 }
 
+function hasTextSelection() {
+    const sel = window.getSelection();
+    return !!(
+        sel &&
+        !sel.isCollapsed &&
+        sel.toString().trim() &&
+        noteContentEl.contains(sel.anchorNode) &&
+        noteContentEl.contains(sel.focusNode)
+    );
+}
+
+function isImageTarget(target) {
+    return target instanceof Element && !!target.closest('img');
+}
+
 function showSelectionToolbar() {
+    if (!hasTextSelection()) { hideSelectionToolbar(); return; }
     const rect = getSelectionRect();
     if (!rect) { hideSelectionToolbar(); return; }
     selectionToolbar.style.display = 'flex';
@@ -4510,8 +4468,8 @@ function hideSelectionToolbar() {
 }
 
 function selectionCommand(cmd) {
+    focusNoteEditorForEditing();
     document.execCommand(cmd, false, null);
-    noteContentEl.focus();
     app.updateCurrentNote();
 }
 
@@ -4527,7 +4485,7 @@ function selectionCopy() {
 }
 
 function selectionPaste() {
-    noteContentEl.focus();
+    focusNoteEditorForEditing();
     if (navigator.clipboard?.readText) {
         navigator.clipboard.readText()
             .then(text => {
@@ -4593,6 +4551,7 @@ function isSelectionHighlighted() {
 
 function toggleHighlight() {
     const alreadyHighlighted = isSelectionHighlighted();
+    focusNoteEditorForEditing();
 
     if (alreadyHighlighted) {
         document.execCommand('backColor', false, 'transparent');
@@ -4602,21 +4561,37 @@ function toggleHighlight() {
         document.execCommand('hiliteColor', false, HIGHLIGHT_HEX);
     }
 
-    noteContentEl.focus();
     app.updateCurrentNote();
 }
 
 function setSelectionColor(color) {
+    focusNoteEditorForEditing();
     document.execCommand('foreColor', false, color);
-    noteContentEl.focus();
     app.updateCurrentNote();
 }
 
 if (noteContentEl) {
-    noteContentEl.addEventListener('mouseup', () => {
+    noteContentEl.addEventListener('click', (event) => {
+        const touchTap = Date.now() <= editorTapExpiresAt;
+        editorTapExpiresAt = 0;
+
+        if (isImageTarget(event.target) || hasTextSelection()) return;
+        if (touchTap || event.detail === 0 || (event.pointerType && event.pointerType !== 'touch')) {
+            focusNoteEditorForEditing();
+        }
+    });
+
+    noteContentEl.addEventListener('touchstart', (e) => {
+        if (isImageTarget(e.target)) hideSelectionToolbar();
+    }, { passive: true });
+
+    noteContentEl.addEventListener('mouseup', (e) => {
+        if (isImageTarget(e.target)) {
+            hideSelectionToolbar();
+            return;
+        }
         setTimeout(() => {
-            const sel = window.getSelection();
-            if (sel && !sel.isCollapsed && noteContentEl.contains(sel.anchorNode)) {
+            if (hasTextSelection()) {
                 showSelectionToolbar();
             } else {
                 hideSelectionToolbar();
@@ -4626,8 +4601,7 @@ if (noteContentEl) {
 
     noteContentEl.addEventListener('keyup', (e) => {
         if (e.key === 'Shift' || e.key.startsWith('Arrow')) {
-            const sel = window.getSelection();
-            if (sel && !sel.isCollapsed && noteContentEl.contains(sel.anchorNode)) {
+            if (hasTextSelection()) {
                 showSelectionToolbar();
             } else {
                 hideSelectionToolbar();
@@ -4638,23 +4612,37 @@ if (noteContentEl) {
     });
 
     noteContentEl.addEventListener('contextmenu', (e) => {
+        if (isImageTarget(e.target)) {
+            hideSelectionToolbar();
+            return;
+        }
         e.preventDefault();
         setTimeout(() => {
-            const sel = window.getSelection();
-            if (sel && !sel.isCollapsed && noteContentEl.contains(sel.anchorNode)) {
+            if (hasTextSelection()) {
                 showSelectionToolbar();
             }
         }, 0);
     });
 }
 
-document.addEventListener('mousedown', (e) => {
-    if (selectionToolbar && noteContentEl) {
-        if (!selectionToolbar.contains(e.target) && !noteContentEl.contains(e.target)) {
-            hideSelectionToolbar();
-        }
+function hideSelectionToolbarFromOutsideInteraction(event) {
+    if (selectionToolbar?.style.display === 'flex' &&
+        !selectionToolbar.contains(event.target)) {
+        hideSelectionToolbar();
     }
+}
+
+const selectionToolbarOutsideEvents = ['pointerdown', 'touchstart', 'touchmove'];
+if (!('PointerEvent' in window)) selectionToolbarOutsideEvents.push('mousedown');
+selectionToolbarOutsideEvents.forEach((eventName) => {
+    document.addEventListener(eventName, hideSelectionToolbarFromOutsideInteraction, {
+        capture: true,
+        passive: true
+    });
 });
+document.addEventListener('click', (event) => {
+    if (event.detail === 0) hideSelectionToolbarFromOutsideInteraction(event);
+}, true);
 
 // ============================================================================
 // 12. NAVIGATION & INITIALIZATION 
@@ -4728,12 +4716,6 @@ app.loading.init();
 const BackHandler = {
     intercept() {
         // ── Priority 1: Close any open dialog or action sheet first ──────
-        const downloadSheet = document.getElementById('downloadNoteActionSheet');
-        if (downloadSheet?.classList.contains('show')) {
-            app.closeDownloadSheet();
-            return true;
-        }
-
         const imageSheet = document.getElementById('imageSourceActionSheet');
         if (imageSheet?.classList.contains('show')) {
             app.closeImageSourceSheet();
@@ -5253,7 +5235,7 @@ app.toggleVoiceDictation = function (e) {
 app.startVoiceDictation = function () {
     const editor = document.getElementById('noteContentInput');
     if (!editor) return;
-    editor.focus();
+    focusNoteEditorWithoutKeyboard();
 
     // 1. Android Native SpeechRecognizer Bridge
     if (window.NotozNativeBridge && typeof window.NotozNativeBridge.startSpeechRecognition === 'function') {
@@ -5345,7 +5327,7 @@ window.onSpeechTranscription = function (data) {
     if (data.isFinal) {
         const editor = document.getElementById('noteContentInput');
         if (editor) {
-            editor.focus();
+            focusNoteEditorWithoutKeyboard();
             document.execCommand('insertText', false, ' ' + data.text.trim());
             app.onContentChange();
         }
@@ -5403,7 +5385,7 @@ app.handleIncomingShare = async function (sharedData) {
     setTimeout(() => {
         const editor = document.getElementById('noteContentInput');
         if (editor) {
-            editor.focus();
+            focusNoteEditorForEditing();
         }
     }, 150);
 

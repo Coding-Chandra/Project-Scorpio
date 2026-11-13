@@ -60,7 +60,16 @@
                 <div class="input-stack">
                     <input type="email" id="login-email" placeholder="Email Address" required autocomplete="username">
                     <div id="password-group" class="password-group">
-                        <input type="password" id="login-password" placeholder="Password" required autocomplete="current-password">
+                        <div class="password-input-wrap">
+                            <input type="password" id="login-password" placeholder="Password" required autocomplete="current-password">
+                            <button type="button" class="password-toggle" data-password-toggle aria-controls="login-password" aria-label="Show password" aria-pressed="false">
+                                <svg class="password-toggle-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                    <path d="M2.25 12c1.65-3.28 5.29-6 9.75-6s8.1 2.72 9.75 6c-1.65 3.28-5.29 6-9.75 6S3.9 15.28 2.25 12Z"></path>
+                                    <circle cx="12" cy="12" r="2.5"></circle>
+                                    <path class="password-eye-slash" d="M4 4l16 16"></path>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <button type="submit" id="login-btn">Continue</button>
@@ -79,7 +88,16 @@
                 <div class="input-stack">
                     <input type="text" id="signup-display-name" placeholder="Name" required>
                     <input type="email" id="signup-email" placeholder="Email" required>
-                    <input type="password" id="signup-password" placeholder="Password (8+ chars)" required>
+                    <div class="password-input-wrap">
+                        <input type="password" id="signup-password" placeholder="Password (8+ chars)" required>
+                        <button type="button" class="password-toggle" data-password-toggle aria-controls="signup-password" aria-label="Show password" aria-pressed="false">
+                            <svg class="password-toggle-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                <path d="M2.25 12c1.65-3.28 5.29-6 9.75-6s8.1 2.72 9.75 6c-1.65 3.28-5.29 6-9.75 6S3.9 15.28 2.25 12Z"></path>
+                                <circle cx="12" cy="12" r="2.5"></circle>
+                                <path class="password-eye-slash" d="M4 4l16 16"></path>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <button type="submit">Sign Up</button>
             </form>

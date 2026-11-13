@@ -129,6 +129,65 @@ input {
 
 input:last-child { border-bottom: none; }
 
+.password-input-wrap {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.password-input-wrap:last-child {
+    border-bottom: none;
+}
+
+.password-input-wrap input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+}
+
+.password-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    align-self: stretch;
+    width: 48px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+}
+
+.password-toggle:hover {
+    color: var(--text-main);
+}
+
+.password-toggle:focus-visible {
+    outline: 2px solid var(--primary-blue);
+    outline-offset: -5px;
+    border-radius: 8px;
+}
+
+.password-toggle-icon {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.password-eye-slash {
+    opacity: 1;
+    transition: opacity 150ms ease;
+}
+
+.password-toggle[aria-pressed="true"] .password-eye-slash {
+    opacity: 0;
+}
+
 /* --- FIX FOR UGLY AUTOFILL --- */
 input:-webkit-autofill,
 input:-webkit-autofill:hover, 
