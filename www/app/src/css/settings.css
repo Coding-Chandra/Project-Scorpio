@@ -3041,7 +3041,7 @@ html[data-ui="nothing"][data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
 .dev-log-list {
     display: grid;
     gap: 8px;
-    max-height: 360px;
+    max-height: 52vh;
     margin: 0;
     padding: 0;
     overflow: auto;

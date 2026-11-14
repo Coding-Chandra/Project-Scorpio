@@ -221,15 +221,6 @@
                     </span>
                     <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
                 </div>
-                <div class="row clickable mobile-settings-entry developer-options-entry" role="button" tabindex="0" aria-controls="mobile-developer-options-page" aria-expanded="false" onclick="openMobileSettingsPage('developer-options')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMobileSettingsPage('developer-options');}" hidden>
-                    <span class="label settings-feature-label">
-                        <svg class="settings-feature-icon" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="m8 8-4 4 4 4m8-8 4 4-4 4m-3-11-2 14"/>
-                        </svg>
-                        Dev Tools
-                    </span>
-                    <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
-                </div>
             </div>
 
             <div class="settings-group animate-list-item-in" style="animation-delay: 0.4s">
@@ -287,6 +278,17 @@
                 </div>
             </div>
 
+            <div class="settings-group">
+                <div class="row clickable mobile-settings-entry developer-options-entry" role="button" tabindex="0" aria-controls="mobile-developer-options-page" aria-expanded="false" onclick="openMobileSettingsPage('developer-options')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMobileSettingsPage('developer-options');}" hidden>
+                    <span class="label settings-feature-label">
+                        <svg class="settings-feature-icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="m8 8-4 4 4 4m8-8 4 4-4 4m-3-11-2 14"/>
+                        </svg>
+                        Dev Tools
+                    </span>
+                    <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+                </div>
+            </div>
             <div class="settings-group animate-list-item-in" style="animation-delay: 0.5s">
                 <div class="row clickable" onclick="showSignOutModal()">
                     <span class="label settings-feature-label">
@@ -294,8 +296,6 @@
                         Log Out
                     </span>
                 </div>
-            </div>
-            <div class="settings-group">
             </div>
             <div class="settings-group">
             </div>
@@ -406,38 +406,70 @@
                 </div>
                 <p class="developer-options-description">Dev Tools are off by default. Turn them on to access diagnostics on this device.</p>
                 <div class="settings-group dev-tools-menu">
-                    <div class="row clickable" role="button" tabindex="0" aria-controls="mobile-developer-sync-page" onclick="openMobileSettingsPage('developer-sync')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMobileSettingsPage('developer-sync');}"><span class="label">Sync diagnostics</span><svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></div>
-                    <div class="row clickable" role="button" tabindex="0" aria-controls="mobile-developer-storage-page" onclick="openMobileSettingsPage('developer-storage')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMobileSettingsPage('developer-storage');}"><span class="label">Storage health</span><svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></div>
-                    <div class="row clickable" role="button" tabindex="0" aria-controls="mobile-developer-environment-page" onclick="openMobileSettingsPage('developer-environment')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMobileSettingsPage('developer-environment');}"><span class="label">Environment & connectivity</span><svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></div>
-                    <div class="row clickable" role="button" tabindex="0" aria-controls="mobile-developer-performance-page" onclick="openMobileSettingsPage('developer-performance')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMobileSettingsPage('developer-performance');}"><span class="label">Performance</span><svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></div>
-                    <div class="row clickable" role="button" tabindex="0" aria-controls="mobile-developer-logs-page" onclick="openMobileSettingsPage('developer-logs')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMobileSettingsPage('developer-logs');}"><span class="label">Logs</span><svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></div>
-                    <div class="row clickable" role="button" tabindex="0" aria-controls="mobile-developer-export-page" onclick="openMobileSettingsPage('developer-export')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMobileSettingsPage('developer-export');}"><span class="label">Diagnostic report</span><svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></div>
+                    <div class="row clickable" role="button" tabindex="0" aria-controls="mobile-developer-sync-page" onclick="openMobileSettingsPage('developer-sync')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMobileSettingsPage('developer-sync');}">
+                        <span class="label">Sync diagnostics</span><svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+                    </div>
+                    <div class="row clickable" role="button" tabindex="0" aria-controls="mobile-developer-storage-page" onclick="openMobileSettingsPage('developer-storage')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMobileSettingsPage('developer-storage');}">
+                        <span class="label">Storage health</span><svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+                    </div>
+                    <div class="row clickable" role="button" tabindex="0" aria-controls="mobile-developer-environment-page" onclick="openMobileSettingsPage('developer-environment')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMobileSettingsPage('developer-environment');}">
+                        <span class="label">Environment & connectivity</span><svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+                    </div>
+                    <div class="row clickable" role="button" tabindex="0" aria-controls="mobile-developer-performance-page" onclick="openMobileSettingsPage('developer-performance')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMobileSettingsPage('developer-performance');}">
+                        <span class="label">Performance</span><svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+                    </div>
+                    <div class="row clickable" role="button" tabindex="0" aria-controls="mobile-developer-logs-page" onclick="openMobileSettingsPage('developer-logs')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMobileSettingsPage('developer-logs');}">
+                        <span class="label">Logs</span><svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+                    </div>
+                    <div class="row clickable" role="button" tabindex="0" aria-controls="mobile-developer-export-page" onclick="openMobileSettingsPage('developer-export')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMobileSettingsPage('developer-export');}">
+                        <span class="label">Diagnostic report</span><svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+                    </div>
                 </div>
                 <p class="developer-options-status" role="status"></p>
             </section>
 
             <section id="mobile-developer-sync-page" aria-labelledby="mobile-developer-sync-title" hidden>
-                <div class="header-main animate-slide-in"><h1 id="mobile-developer-sync-title">Sync diagnostics</h1><br><button class="back-btn" type="button" onclick="openMobileSettingsPage('developer-options')">Dev Tools</button></div>
+                <div class="header-main animate-slide-in">
+                    <h1 id="mobile-developer-sync-title">Sync diagnostics</h1><br>
+                    <button class="back-btn" type="button" onclick="openMobileSettingsPage('developer-options')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.83 19a 1 1 0 0 1-.78-.37l-4.83-6a 1 1 0 0 1 0-1.27l5-6a 1 1 0 0 1 1.54 1.28L10.29 12l4.32 5.36a 1 1 0 0 1-.78 1.64"></path></svg>Dev Tools</button>
+                </div>
                 <div id="mobile-dev-sync-view"></div>
             </section>
             <section id="mobile-developer-storage-page" aria-labelledby="mobile-developer-storage-title" hidden>
-                <div class="header-main animate-slide-in"><h1 id="mobile-developer-storage-title">Storage health</h1><br><button class="back-btn" type="button" onclick="openMobileSettingsPage('developer-options')">Dev Tools</button></div>
+                <div class="header-main animate-slide-in">
+                    <h1 id="mobile-developer-storage-title">Storage health</h1><br>
+                    <button class="back-btn" type="button" onclick="openMobileSettingsPage('developer-options')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.83 19a 1 1 0 0 1-.78-.37l-4.83-6a 1 1 0 0 1 0-1.27l5-6a 1 1 0 0 1 1.54 1.28L10.29 12l4.32 5.36a 1 1 0 0 1-.78 1.64"></path></svg>Dev Tools</button>
+                </div>
                 <div id="mobile-dev-storage-view"></div>
             </section>
             <section id="mobile-developer-environment-page" aria-labelledby="mobile-developer-environment-title" hidden>
-                <div class="header-main animate-slide-in"><h1 id="mobile-developer-environment-title">Environment & connectivity</h1><br><button class="back-btn" type="button" onclick="openMobileSettingsPage('developer-options')">Dev Tools</button></div>
+                <div class="header-main animate-slide-in">
+                    <h1 id="mobile-developer-environment-title">Environment & connectivity</h1><br>
+                    <button class="back-btn" type="button" onclick="openMobileSettingsPage('developer-options')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.83 19a 1 1 0 0 1-.78-.37l-4.83-6a 1 1 0 0 1 0-1.27l5-6a 1 1 0 0 1 1.54 1.28L10.29 12l4.32 5.36a 1 1 0 0 1-.78 1.64"></path></svg>Dev Tools</button>
+                </div>
                 <div id="mobile-dev-environment-view"></div>
             </section>
             <section id="mobile-developer-performance-page" aria-labelledby="mobile-developer-performance-title" hidden>
-                <div class="header-main animate-slide-in"><h1 id="mobile-developer-performance-title">Performance</h1><br><button class="back-btn" type="button" onclick="openMobileSettingsPage('developer-options')">Dev Tools</button></div>
-                <div id="mobile-dev-performance-view"></div>
-                <div id="mobile-hfr-hud-entry" class="row developer-subpage-entry" hidden>
-                    <div><span class="label settings-feature-label">Performance HUD (HFR Telemetry)</span><p class="developer-setting-hint">Live 120/144Hz FPS & VSync overlay</p></div>
-                    <button id="mobile-hfr-hud-toggle" type="button" class="notifToggle" role="switch" aria-label="Performance HUD" aria-checked="false" data-checked="false" onclick="toggleHfrHud(event)"><span class="notifThumb"></span></button>
+                <div class="header-main animate-slide-in">
+                    <h1 id="mobile-developer-performance-title">Performance</h1><br><br>
+                    <button class="back-btn" type="button" onclick="openMobileSettingsPage('developer-options')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.83 19a 1 1 0 0 1-.78-.37l-4.83-6a 1 1 0 0 1 0-1.27l5-6a 1 1 0 0 1 1.54 1.28L10.29 12l4.32 5.36a 1 1 0 0 1-.78 1.64"></path></svg>Dev Tools</button>
+                </div>
+                <div></div>
+                <div id="mobile-hfr-hud-entry" class="row developer-subpage-entry label settings-feature-label" hidden>
+                    <div>
+                        <span class="">Performance HUD (HFR Telemetry)</span>
+                        <p class="developer-setting-hint">Live 120/144Hz FPS & VSync overlay</p>
+                    </div>
+                    <button id="mobile-hfr-hud-toggle" type="button" class="notifToggle" role="switch" aria-label="Performance HUD" aria-checked="false" data-checked="false" onclick="toggleHfrHud(event)">
+                        <span class="notifThumb"></span>
+                    </button>
                 </div>
             </section>
             <section id="mobile-developer-export-page" aria-labelledby="mobile-developer-export-title" hidden>
-                <div class="header-main animate-slide-in"><h1 id="mobile-developer-export-title">Diagnostic report</h1><br><button class="back-btn" type="button" onclick="openMobileSettingsPage('developer-options')">Dev Tools</button></div>
+                <div class="header-main animate-slide-in">
+                    <h1 id="mobile-developer-export-title">Diagnostic report</h1><br>
+                    <button class="back-btn" type="button" onclick="openMobileSettingsPage('developer-options')"> <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.83 19a 1 1 0 0 1-.78-.37l-4.83-6a 1 1 0 0 1 0-1.27l5-6a 1 1 0 0 1 1.54 1.28L10.29 12l4.32 5.36a 1 1 0 0 1-.78 1.64"></path></svg>Dev Tools</button>
+                </div>
                 <div id="mobile-dev-export-view"></div>
             </section>
 
@@ -475,11 +507,6 @@
                     !window.isDeveloperOptionsEnabled()
                 ) return;
 
-                list.hidden = true;
-                Object.values(pageIds).forEach((id) => {
-                    const settingsPage = document.getElementById(id);
-                    if (settingsPage) settingsPage.hidden = settingsPage !== page;
-                });
                 const activePage = Object.values(pageIds)
                     .map((id) => document.getElementById(id))
                     .find((candidate) => candidate && !candidate.hidden);
@@ -488,6 +515,11 @@
                         .querySelector(`[aria-controls="${activePage.id}"]`)
                         ?.setAttribute("aria-expanded", "false");
                 }
+                list.hidden = true;
+                Object.values(pageIds).forEach((id) => {
+                    const settingsPage = document.getElementById(id);
+                    if (settingsPage) settingsPage.hidden = settingsPage !== page;
+                });
                 const entry = document.querySelector(
                     `[aria-controls="${pageId}"]`,
                 );
@@ -916,12 +948,12 @@
                                 </div>
                             </div>
                             <div class="settings-group dev-tools-menu">
-                                <div class="row clickable" role="button" tabindex="0" onclick="openDesktopSettingsSection('dev-sync')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDesktopSettingsSection('dev-sync');}"><span class="label">Sync diagnostics</span><svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></div>
-                                <div class="row clickable" role="button" tabindex="0" onclick="openDesktopSettingsSection('dev-storage')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDesktopSettingsSection('dev-storage');}"><span class="label">Storage health</span><svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></div>
-                                <div class="row clickable" role="button" tabindex="0" onclick="openDesktopSettingsSection('dev-environment')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDesktopSettingsSection('dev-environment');}"><span class="label">Environment & connectivity</span><svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></div>
-                                <div class="row clickable" role="button" tabindex="0" onclick="openDesktopSettingsSection('dev-performance')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDesktopSettingsSection('dev-performance');}"><span class="label">Performance</span><svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></div>
-                                <div class="row clickable" role="button" tabindex="0" onclick="openDesktopSettingsSection('dev-logs')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDesktopSettingsSection('dev-logs');}"><span class="label">Logs</span><svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></div>
-                                <div class="row clickable" role="button" tabindex="0" onclick="openDesktopSettingsSection('dev-export')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDesktopSettingsSection('dev-export');}"><span class="label">Diagnostic report</span><svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></div>
+                                <div class="row clickable" onclick="openDesktopSettingsSection('dev-sync')"><span class="label">Sync diagnostics</span><svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></div>
+                                <div class="row clickable" onclick="openDesktopSettingsSection('dev-storage')"><span class="label">Storage health</span><svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></div>
+                                <div class="row clickable" onclick="openDesktopSettingsSection('dev-environment')"><span class="label">Environment & connectivity</span><svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></div>
+                                <div class="row clickable" onclick="openDesktopSettingsSection('dev-performance')"><span class="label">Performance</span><svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></div>
+                                <div class="row clickable" onclick="openDesktopSettingsSection('dev-logs')"><span class="label">Logs</span><svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></div>
+                                <div class="row clickable" onclick="openDesktopSettingsSection('dev-export')"><span class="label">Diagnostic report</span><svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></div>
                             </div>
                             <p class="developer-options-status" role="status"></p>
                         </section>
@@ -945,8 +977,13 @@
                             <div class="desktop-sub-intro"><h2>Performance</h2><p>Inspect live frame-rate telemetry.</p></div>
                             <div id="desktop-dev-performance-view"></div>
                             <div id="desktop-hfr-hud-entry" class="row developer-subpage-entry" hidden>
-                                <div><span class="label">Performance HUD (HFR Telemetry)</span><p class="developer-setting-hint">Live 120/144Hz FPS & VSync overlay</p></div>
-                                <button id="desktop-developer-hfr-hud-toggle" type="button" class="notifToggle" role="switch" aria-label="Performance HUD" aria-checked="false" data-checked="false" onclick="toggleHfrHud(event)"><span class="notifThumb"></span></button>
+                                <div>
+                                    <span class="label">Performance HUD (HFR Telemetry)</span>
+                                    <p class="developer-setting-hint">Live 120/144Hz FPS & VSync overlay</p>
+                                </div>
+                                <button id="desktop-developer-hfr-hud-toggle" type="button" class="notifToggle" role="switch" aria-label="Performance HUD" aria-checked="false" data-checked="false" onclick="toggleHfrHud(event)">
+                                    <span class="notifThumb"></span>
+                                </button>
                             </div>
                             <button class="back-btn" type="button" onclick="openDesktopSettingsSection('developer-options')">Dev Tools</button>
                         </section>
@@ -1579,6 +1616,11 @@
                                 }
                             });
                         syncNativeState(section);
+                        if (section === "dev-logs") {
+                            window.mountDeveloperLogs(
+                                document.getElementById("desktop-developer-logs-view"),
+                            );
+                        }
                         const devToolViewIds = {
                             "dev-sync": "desktop-dev-sync-view",
                             "dev-storage": "desktop-dev-storage-view",
@@ -1586,11 +1628,6 @@
                             "dev-performance": "desktop-dev-performance-view",
                             "dev-export": "desktop-dev-export-view",
                         };
-                        if (section === "dev-logs") {
-                            window.mountDeveloperLogs(
-                                document.getElementById("desktop-developer-logs-view"),
-                            );
-                        }
                         if (devToolViewIds[section]) {
                             window.mountDeveloperTools?.(
                                 section,
