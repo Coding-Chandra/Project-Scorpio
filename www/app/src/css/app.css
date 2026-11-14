@@ -1599,8 +1599,8 @@
             border-radius: 999px;
             background: rgba(255,255,255,0);
             color: var(--text-primary);
-            backdrop-filter: blur(var(--blur-xl)) saturate(1.5) var(--lg-filter-url);
-            -webkit-backdrop-filter: blur(var(--blur-xl)) saturate(1.5) var(--lg-filter-url);
+            backdrop-filter: blur(var(--blur-m)) saturate(1.5) var(--lg-filter-url);
+            -webkit-backdrop-filter: blur(var(--blur-m)) saturate(1.5) var(--lg-filter-url);
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
             vertical-align: top;
             z-index: 140;
@@ -3533,7 +3533,6 @@ html[data-ui="nothing"] .notif{
     }
 
     .toolbar-scroll {
-        justify-content: flex-start !important;
         gap: 6px !important;
         padding: 0 10px !important;
         overflow-x: auto !important;

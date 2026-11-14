@@ -2063,23 +2063,17 @@ app.renderEditor = function () {
     emptyState.style.display = 'none';
     container.classList.add('visible');
 
-    if (document.activeElement !== titleInput) titleInput.value = note.title;
+    if (document.activeElement !== titleInput) {
+        titleInput.value = note.title?.startsWith('enc:') ? '' : note.title || '';
+    }
     const editorDateDisplay = document.getElementById('mobileEditorDateDisplay');
     if (editorDateDisplay) editorDateDisplay.textContent = Utils.formatDateTime(note.updated_at);
 
     // Handle encrypted content that hasn't been decrypted yet
     if (document.activeElement !== contentInput && !document.getElementById('imgUpload').value) {
-        if (!note._decrypted && note.content?.startsWith('enc:')) {
-            // Decrypt on demand, show blank while waiting
+        if (note.title?.startsWith('enc:') || note.content?.startsWith('enc:')) {
             contentInput.innerHTML = '';
-            decryptWithMasterKey(note.content).then(decrypted => {
-                note.content = decrypted;
-                note._decrypted = true;
-                contentInput.innerHTML = sanitizeNoteHtml(decrypted);
-                this.updateNoteItemInList(note.id);
-            }).catch(e => {
-                console.error('[Decrypt] On-demand decryption failed:', e);
-            });
+            DecryptQueue.priorityFull(note.id);
         } else {
             contentInput.innerHTML = sanitizeNoteHtml(note.content || '');
         }
@@ -4349,7 +4343,6 @@ function focusNoteEditorWithoutKeyboard() {
 }
 
 function beginEditorTouchGesture(x, y, id) {
-    noteContentEl.setAttribute('inputmode', 'none');
     editorTapExpiresAt = 0;
     editorTouchGesture = { x, y, id, startedAt: Date.now(), moved: false };
 }
@@ -4841,10 +4834,6 @@ try {
 
         console.log(`[Startup] Loaded ${this.notes.length} local notes`);
 
-        this.renderNotesList(false);
-        this.renderEditor();
-        this.updateNotesCount();
-
         // Non-blocking fast path: decrypt active note & visible items first
         if (typeof this.decryptVisibleNotesOnly === 'function') {
             this.decryptVisibleNotesOnly();
@@ -4855,9 +4844,6 @@ try {
     } else {
 
         this.notes = [];
-        if (isOnline()) {
-            await this.syncNotesFromServer();
-        }
     }
 
 } catch (err) {
@@ -4866,8 +4852,10 @@ try {
     this.notes = [];
 }
 
-if (isOnline() && this.notes.length > 0) {
-    this.syncNotesFromServer();
+if (isOnline()) {
+    this.syncNotesFromServer().catch(err => {
+        console.error('[Sync] Background sync failed:', err);
+    });
 }
 
 };
@@ -5027,7 +5015,7 @@ app.decryptVisibleNotesOnly = async function () {
         return;
     }
 
-    const notes = this.getNotesToDisplay().slice(0, 15);
+    const notes = this.getNotesToDisplay();
     for (const note of notes) {
         if (!note._decrypted && !note._previewDecrypted) {
             DecryptQueue.queuePreview(note.id);

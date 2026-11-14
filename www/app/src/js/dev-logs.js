@@ -86,6 +86,10 @@
         }
     }
 
+    window.getDeveloperLogEntries = function () {
+        return loadEntries().slice(-100);
+    };
+
     function publish(entries) {
         memoryEntries = entries;
         try {

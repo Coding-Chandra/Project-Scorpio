@@ -4343,7 +4343,6 @@ function focusNoteEditorWithoutKeyboard() {
 }
 
 function beginEditorTouchGesture(x, y, id) {
-    noteContentEl.setAttribute('inputmode', 'none');
     editorTapExpiresAt = 0;
     editorTouchGesture = { x, y, id, startedAt: Date.now(), moved: false };
 }

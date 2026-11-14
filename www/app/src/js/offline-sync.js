@@ -267,6 +267,7 @@ async function syncWithSupabase() {
 
   try {
     if (!db) await initializeDatabase();
+    await setMetadata('lastSyncTime', new Date().toISOString());
 
     // Get all pending sync operations
     // Get current user
@@ -278,19 +279,33 @@ async function syncWithSupabase() {
     }
 
     // Only process operations belonging to the active account.
+    await recoverUnqueuedOfflineNotes(user.id);
     const queueItems = await getQueueItems(user.id);
     console.log('[Sync] Found', queueItems.length, 'items to sync');
 
     if (queueItems.length === 0) {
+      await setMetadata('lastSyncSuccessAt', new Date().toISOString());
       isSyncing = false;
       return;
     }
+
+    let hasSyncErrors = false;
 
     // Process each queued item
     for (const queueItem of queueItems) {
       try {
         if (queueItem.action === 'upsert') {
-          await syncNoteUpsert(queueItem, user);
+          const remappedId = await syncNoteUpsert(queueItem, user);
+          if (remappedId) {
+            for (const pendingItem of queueItems) {
+              if (pendingItem.noteId === remappedId.oldId) {
+                pendingItem.noteId = remappedId.newId;
+              }
+              if (pendingItem.data?.id === remappedId.oldId) {
+                pendingItem.data.id = remappedId.newId;
+              }
+            }
+          }
         } else if (queueItem.action === 'delete') {
           await syncNoteDeletion(queueItem, user);
         }
@@ -298,18 +313,17 @@ async function syncWithSupabase() {
         // Remove from queue on success
         await removeFromQueue(queueItem.id);
       } catch (error) {
+        hasSyncErrors = true;
         console.error('[Sync] Error syncing item:', error);
         
         // Increment retry count
-        queueItem.retries = (queueItem.retries || 0) + 1;
-        
-        if (queueItem.retries < queueItem.maxRetries) {
-          // Retry later
-          await updateQueueItem(queueItem);
-        } else {
-          // Max retries exceeded
-          console.error('[Sync] ❌ Max retries exceeded for:', queueItem.noteId);
-          await removeFromQueue(queueItem.id);
+        const maxRetries = queueItem.maxRetries || 3;
+        const previousRetries = queueItem.retries || 0;
+        queueItem.retries = Math.min(previousRetries + 1, maxRetries);
+        await updateQueueItem(queueItem);
+
+        if (previousRetries < maxRetries && queueItem.retries >= maxRetries) {
+          console.error('[Sync] ❌ Retry limit reached; keeping item queued:', queueItem.noteId);
           if (typeof showNotification === 'function') {
             showNotification('Sync Error', `Failed to sync note ${queueItem.noteId}`, 'error');
           }
@@ -317,11 +331,13 @@ async function syncWithSupabase() {
       }
     }
 
-    // Update last sync time
-    await setMetadata('lastSyncTime', new Date().toISOString());
+    // Update sync timestamps
+    if (!hasSyncErrors) {
+      await setMetadata('lastSyncSuccessAt', new Date().toISOString());
+    }
 
-    console.log('[Sync] ✓ Sync completed successfully');
-    if (typeof showNotification === 'function') {
+    console.log(hasSyncErrors ? '[Sync] Sync completed with failures' : '[Sync] ✓ Sync completed successfully');
+    if (!hasSyncErrors && typeof showNotification === 'function') {
       showNotification('✓ Synced', 'All changes saved to cloud', 'success');
     }
   } catch (error) {
@@ -340,6 +356,16 @@ async function syncNoteUpsert(queueItem, user) {
   // Use the supabaseClient from app.js
   if (typeof supabaseClient === 'undefined') {
     throw new Error('supabaseClient not available');
+  }
+
+  let remappedId = null;
+  if (!isUUID(noteData.id)) {
+    const oldId = noteData.id;
+    const newId = generateUUID();
+    await replaceOfflineNoteId(oldId, newId, user.id);
+    noteData.id = newId;
+    queueItem.noteId = newId;
+    remappedId = { oldId, newId };
   }
 
   const encryptedTitle = noteData.title?.startsWith('enc:')
@@ -368,6 +394,7 @@ async function syncNoteUpsert(queueItem, user) {
   await updateNoteSync(noteData.id, true, user.id);
 
   console.log('[Sync] ✓ Upserted note:', noteData.id);
+  return remappedId;
 }
 
 /**
@@ -376,6 +403,11 @@ async function syncNoteUpsert(queueItem, user) {
 async function syncNoteDeletion(queueItem, user) {
   if (typeof supabaseClient === 'undefined') {
     throw new Error('supabaseClient not available');
+  }
+
+  if (!isUUID(queueItem.noteId)) {
+    console.log('[Sync] ✓ Skipping deletion of a note that was never uploaded:', queueItem.noteId);
+    return;
   }
 
   const { error } = await supabaseClient
@@ -467,6 +499,103 @@ function updateQueueItem(queueItem) {
   });
 }
 
+/**
+ * Requeue local changes whose queue entries were lost after earlier retries.
+ */
+async function recoverUnqueuedOfflineNotes(userId) {
+  const [notes, queueItems] = await Promise.all([
+    getNotesOffline(userId),
+    getQueueItems(userId)
+  ]);
+  const queuedNoteIds = new Set(
+    queueItems
+      .filter((item) => item.action === 'upsert')
+      .map((item) => item.noteId)
+  );
+
+  for (const note of notes) {
+    if ((note.synced === false || note.offline === true) && !queuedNoteIds.has(note.id)) {
+      const timestamp = new Date().toISOString();
+      const queueItem = {
+        action: 'upsert',
+        user_id: userId,
+        noteId: note.id,
+        data: note,
+        timestamp,
+        retries: 0,
+        maxRetries: 3
+      };
+      await new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORES.syncQueue], 'readwrite');
+        const request = transaction.objectStore(STORES.syncQueue).add(queueItem);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+      });
+      queuedNoteIds.add(note.id);
+      console.log('[Sync] Requeued unsynced local note:', note.id);
+    }
+  }
+}
+
+/**
+ * Replace a legacy non-UUID note ID in IndexedDB and all of its queued actions.
+ */
+function replaceOfflineNoteId(oldId, newId, userId) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORES.notes, STORES.syncQueue], 'readwrite');
+    const notesStore = transaction.objectStore(STORES.notes);
+    const queueStore = transaction.objectStore(STORES.syncQueue);
+    const noteRequest = notesStore.get(oldId);
+
+    noteRequest.onsuccess = () => {
+      const note = noteRequest.result;
+      if (note?.user_id === userId) {
+        note.id = newId;
+        notesStore.put(note);
+        notesStore.delete(oldId);
+      }
+    };
+
+    noteRequest.onerror = () => reject(noteRequest.error);
+
+    const cursorRequest = queueStore.openCursor();
+    cursorRequest.onsuccess = (event) => {
+      const cursor = event.target.result;
+      if (!cursor) return;
+
+      const item = cursor.value;
+      const ownerId = item.user_id || item.data?.user_id;
+      const referencesNote = item.noteId === oldId || item.data?.id === oldId;
+      if (ownerId === userId && referencesNote) {
+        if (item.noteId === oldId) item.noteId = newId;
+        if (item.data?.id === oldId) item.data.id = newId;
+        cursor.update(item);
+      }
+      cursor.continue();
+    };
+
+    cursorRequest.onerror = () => reject(cursorRequest.error);
+    transaction.oncomplete = () => {
+      const appInstance = window.app;
+      if (appInstance) {
+        for (const note of appInstance.notes || []) {
+          if (note.id === oldId) note.id = newId;
+        }
+        if (appInstance.activeNoteId === oldId) appInstance.activeNoteId = newId;
+        document.querySelectorAll('[data-note-id]').forEach((element) => {
+          if (element.getAttribute('data-note-id') === oldId) {
+            element.setAttribute('data-note-id', newId);
+          }
+        });
+      }
+      resolve();
+    };
+    transaction.onerror = () => reject(transaction.error);
+    transaction.onabort = () => reject(transaction.error || new Error('Failed to replace offline note ID.'));
+  });
+}
+
 // =====================================================
 // 5. METADATA MANAGEMENT (With Functions to Set and Get Metadata Values, Like Last Sync Time)
 // =====================================================
@@ -515,7 +644,21 @@ async function getLastSyncTime() {
  * Generate UUID for offline notes
  */
 function generateUUID() {
-  return 'offline_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  if (typeof crypto === 'undefined' || typeof crypto.getRandomValues !== 'function') {
+    throw new Error('Secure UUID generation is not available.');
+  }
+
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function isUUID(value) {
+  return typeof value === 'string' &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
 /**

@@ -15,6 +15,27 @@ const supabase = (() => {
 
 let currentUser = null;
 
+window.getDeveloperToolsUser = async function () {
+    if (currentUser) return currentUser;
+    if (typeof supabase.auth.getSession !== "function") return null;
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    currentUser = data?.session?.user || null;
+    return currentUser;
+};
+
+window.checkDeveloperToolsAuth = async function () {
+    if (!navigator.onLine) return currentUser ? "Offline (saved session)" : "Offline";
+    try {
+        const { data, error } = await supabase.auth.getUser();
+        if (error) return "Check failed";
+        currentUser = data?.user || null;
+        return currentUser ? "Authenticated" : "No active session";
+    } catch {
+        return "Check failed";
+    }
+};
+
 const OLD_STATIC_SALT = 'notesapp_v1_salt';
 const OLD_ITERATIONS = 200000;
 const NEW_ITERATIONS = 600000;
