@@ -13,7 +13,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "GPL-3.0-or-later",
   "type": "commonjs",
   "dependencies": {
     "@aparajita/capacitor-biometric-auth": "^10.0.0",

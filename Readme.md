@@ -1,6 +1,7 @@
 # 🦂 Project Scorpio — PWA & Native Notes App
 
 [![Version](https://img.shields.io/badge/version-2.5.011-D71921.svg?style=flat-square)](package.json)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android%208.0+%20|%20PWA%20|%20Web-000000.svg?style=flat-square)](capacitor.config.json)
 [![Encryption](https://img.shields.io/badge/encryption-AES--GCM%20256--bit-success.svg?style=flat-square)](#-security--encryption)
 [![Display](https://img.shields.io/badge/display-120Hz%20%2F%20144Hz%20AMOLED-blueviolet.svg?style=flat-square)](#-native-android-capabilities)
@@ -528,7 +529,7 @@ You do not need to pay the Google Play \$25 developer fee. You can distribute No
 
 ## 📄 License
 
-Distributed under the MIT License. See `LICENSE` for more information.
+Distributed under the GNU General Public License v3.0 (GPLv3). See `LICENSE` for more information.
 
 ---
 
