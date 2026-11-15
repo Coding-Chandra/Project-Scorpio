@@ -5,6 +5,7 @@
 [![Platform](https://img.shields.io/badge/platform-Android%208.0+%20|%20PWA%20|%20Web-000000.svg?style=flat-square)](capacitor.config.json)
 [![Available on GitHub](https://img.shields.io/badge/Available%20on-GitHub-181717.svg?style=flat-square&logo=github)](https://github.com/Coding-Chandra/Scorpio-native/releases)
 [![Available on IzzyOnDroid](https://img.shields.io/badge/Available%20on-IzzyOnDroid-blue.svg?style=flat-square&logo=android)](https://apt.izzysoft.de/)
+[![Available on APKMirror](https://img.shields.io/badge/Available%20on-APKMirror-orange.svg?style=flat-square)](https://www.apkmirror.com/)
 [![Encryption](https://img.shields.io/badge/encryption-AES--GCM%20256--bit-success.svg?style=flat-square)](#-security--encryption)
 [![Display](https://img.shields.io/badge/display-120Hz%20%2F%20144Hz%20AMOLED-blueviolet.svg?style=flat-square)](#-native-android-capabilities)
 [![Icons](https://img.shields.io/badge/icons-Material%20You%20%26%20Nothing%20OS-orange.svg?style=flat-square)](#-material-you--nothing-os-themed-icons)
@@ -428,12 +429,13 @@ const SUPABASE_ANON_KEY = 'your_anon_public_key_here';
    * Ensure HTTPS is enabled (mandatory for PWA Service Workers and Web Crypto API).
    * Configure CORS headers for your Supabase backend.
 
-### 📲 Available on GitHub & IzzyOnDroid
+### 📲 Available on GitHub, IzzyOnDroid & APKMirror
 
 Notoz for Android is available for download on:
 
 1. **[GitHub Releases](https://github.com/Coding-Chandra/Scorpio-native/releases):** Download the latest signed APK (`v2.5.011`) directly.
 2. **[IzzyOnDroid & F-Droid](https://apt.izzysoft.de/):** 100% free open-source repository; automatically indexes APK releases directly from GitHub Releases for F-Droid and Neo Store client users.
+3. **[APKMirror](https://www.apkmirror.com/):** Trusted community repository for verified Android application packages.
 
 ---
 
