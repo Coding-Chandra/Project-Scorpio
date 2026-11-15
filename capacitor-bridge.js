@@ -54,19 +54,89 @@
   };
   window.__NOTOZ_HAPTICS = haptics;
 
-  // ── 2. STATUS BAR & SAFE AREA ─────────────────────────────────────────────
+  // ── 2. STATUS BAR & SYSTEM BARS THEME SYNCHRONIZATION ─────────────────────
+  function resolveCurrentTheme() {
+    let mode = document.documentElement.getAttribute('data-theme');
+    if (!mode || mode === 'system') {
+      const saved = localStorage.getItem('notozApp_theme');
+      if (saved === 'light' || saved === 'dark') {
+        mode = saved;
+      } else {
+        mode = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          ? 'dark'
+          : 'light';
+      }
+    }
+    return mode === 'light' ? 'light' : 'dark';
+  }
+
+  async function updateStatusBarStyle(forcedTheme) {
+    const theme = forcedTheme || resolveCurrentTheme();
+    const isLight = (theme === 'light');
+
+    // 1. Direct native Android WindowInsetsController bridge (if available)
+    try {
+      if (window.AndroidSystemUI && typeof window.AndroidSystemUI.setLightBars === 'function') {
+        window.AndroidSystemUI.setLightBars(isLight);
+      }
+    } catch (_) {}
+
+    // 2. Official Capacitor StatusBar plugin
+    try {
+      if (StatusBar) {
+        // In Capacitor @capacitor/status-bar:
+        // Style.LIGHT -> Dark icons/text (for light backgrounds)
+        // Style.DARK  -> Light/white icons/text (for dark backgrounds)
+        const targetStyle = isLight ? 'LIGHT' : 'DARK';
+        await StatusBar.setStyle({ style: targetStyle });
+        console.log('[CapBridge] StatusBar style updated to:', targetStyle, 'for theme:', theme);
+      }
+    } catch (e) {
+      console.warn('[CapBridge] StatusBar setStyle error:', e);
+    }
+  }
+
   async function setupStatusBar() {
     try {
       if (StatusBar) {
         await StatusBar.setOverlaysWebView({ overlay: true });
-        await StatusBar.setStyle({ style: 'DARK' });
         await StatusBar.setBackgroundColor({ color: '#00000000' });
-        console.log('[CapBridge] StatusBar configured.');
+        await updateStatusBarStyle();
+        console.log('[CapBridge] StatusBar configured with dynamic theme support.');
       }
     } catch (e) {
       console.warn('[CapBridge] StatusBar error:', e);
     }
+
+    // Observe changes to data-theme on <html> so status bar responds immediately
+    try {
+      const observer = new MutationObserver((mutations) => {
+        for (const m of mutations) {
+          if (m.attributeName === 'data-theme') {
+            updateStatusBarStyle();
+            break;
+          }
+        }
+      });
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-theme']
+      });
+    } catch (_) {}
+
+    // Listen to OS system theme changes if user has theme set to 'system'
+    if (window.matchMedia) {
+      const mql = window.matchMedia('(prefers-color-scheme: dark)');
+      const onSysTheme = () => {
+        if (localStorage.getItem('notozApp_theme') === 'system') {
+          updateStatusBarStyle();
+        }
+      };
+      if (mql.addEventListener) mql.addEventListener('change', onSysTheme);
+      else if (mql.addListener) mql.addListener(onSysTheme);
+    }
   }
+  window.__NOTOZ_UPDATE_STATUS_BAR = updateStatusBarStyle;
 
   function setupSafeArea() {
     const root = document.documentElement;
@@ -79,20 +149,16 @@
   }
 
   // ── 3. SPLASH SCREEN ──────────────────────────────────────────────────────
-  let splashHidden = false;
-  async function hideSplash(duration = 180) {
-    if (splashHidden) return;
-    splashHidden = true;
+  async function hideSplash() {
     try {
       if (SplashScreen) {
-        await SplashScreen.hide({ fadeOutDuration: duration });
+        await SplashScreen.hide({ fadeOutDuration: 350 });
         console.log('[CapBridge] Splash hidden.');
       }
     } catch (e) {
       console.warn('[CapBridge] Splash error:', e);
     }
   }
-  window.__NOTOZ_HIDE_SPLASH = hideSplash;
 
   // ── 4. KEYBOARD BEHAVIOR ──────────────────────────────────────────────────
   function setupKeyboard() {
@@ -102,6 +168,13 @@
       Keyboard.addListener('keyboardWillShow', (info) => {
         document.documentElement.style.setProperty('--keyboard-height', info.keyboardHeight + 'px');
         document.body.classList.add('keyboard-visible');
+
+        setTimeout(() => {
+          const active = document.activeElement;
+          if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)) {
+            active.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 120);
       });
 
       Keyboard.addListener('keyboardWillHide', () => {
@@ -145,62 +218,88 @@
         return;
       }
 
-      // 2. Settings Portal Layer (settings.html / settings.js)
+      // 1c. Settings Custom Modal Overlay (Sign Out, Delete Account, etc.)
+      const customModalOverlay = document.getElementById('custom-modal-overlay');
+      if (customModalOverlay && (customModalOverlay.classList.contains('show') || customModalOverlay.style.display === 'flex')) {
+        if (window.SettingsDialog && typeof window.SettingsDialog.closeWithAnimation === 'function') {
+          window.SettingsDialog.closeWithAnimation();
+        } else {
+          const cancelBtn = document.getElementById('modal-cancel-btn');
+          if (cancelBtn) {
+            cancelBtn.click();
+          } else {
+            customModalOverlay.classList.remove('show');
+            customModalOverlay.style.display = 'none';
+          }
+        }
+        console.log('[CapBridge] Back → closed Settings Custom Modal.');
+        return;
+      }
+
+      // 2a. Settings Portal Layer (iframe detail page in settings.html: Profile, Theme, Wallpaper, etc.)
       const portalLayer = document.getElementById('portal-layer');
-      if (portalLayer && portalLayer.classList.contains('active')) {
+      if (portalLayer && (portalLayer.classList.contains('active') || portalLayer.style.display === 'block')) {
         if (typeof window.closePortal === 'function') {
           window.closePortal();
         } else {
           portalLayer.classList.remove('active');
         }
-        console.log('[CapBridge] Back → closed Settings Portal.');
+        console.log('[CapBridge] Back → closed Settings Portal (iframe).');
+        return;
+      }
+
+      // 2b. Native Mobile Settings Pages (Security, Locked Folder)
+      const secPage = document.getElementById('mobile-security-page');
+      const lfPage = document.getElementById('mobile-locked-folder-page');
+      if ((secPage && !secPage.hidden) || (lfPage && !lfPage.hidden)) {
+        if (typeof window.closeMobileSettingsPage === 'function') {
+          window.closeMobileSettingsPage();
+        } else {
+          if (secPage) secPage.hidden = true;
+          if (lfPage) lfPage.hidden = true;
+          const list = document.getElementById('mobile-settings-list');
+          if (list) list.hidden = false;
+        }
+        console.log('[CapBridge] Back → closed Native Mobile Settings Page.');
+        return;
+      }
+
+      // 2c. Desktop Security Response Modal
+      const secRespModal = document.getElementById('desktop-security-response-modal');
+      if (secRespModal && (secRespModal.classList.contains('open') || secRespModal.getAttribute('aria-hidden') === 'false')) {
+        const closeBtn = document.getElementById('desktop-response-close');
+        if (closeBtn) closeBtn.click();
+        else secRespModal.classList.remove('open');
+        console.log('[CapBridge] Back → closed Security Response Modal.');
         return;
       }
 
       // 3. Primary: Delegate to Notoz's native BackHandler
       // This correctly handles dropdowns, toolbars, multi-select, and triggers mtrans container transitions
       // between editor -> notes -> folders, plus double-back to exit!
-      let handler = null;
-      try {
-        if (typeof window.BackHandler !== 'undefined' && window.BackHandler.intercept) {
-          handler = window.BackHandler;
-        } else if (typeof BackHandler !== 'undefined' && BackHandler.intercept) {
-          handler = BackHandler;
-        }
-      } catch (_) {}
-
-      if (handler && typeof handler.intercept === 'function') {
-        const intercepted = handler.intercept();
-        if (intercepted) {
+      if (typeof window.BackHandler !== 'undefined' && typeof window.BackHandler.intercept === 'function') {
+        const handled = window.BackHandler.intercept();
+        if (handled) {
           console.log('[CapBridge] Back → handled by BackHandler.');
           return;
         }
       }
 
       // 4. Fallback for mobile view navigation stack
-      let currentApp = null;
-      try {
-        if (typeof window.app !== 'undefined' && window.app.ui) {
-          currentApp = window.app;
-        } else if (typeof app !== 'undefined' && app.ui) {
-          currentApp = app;
-        }
-      } catch (_) {}
-
-      if (currentApp && currentApp.ui && currentApp.ui.isMobile) {
-        if (currentApp.ui.mobileView === 'editor') {
-          currentApp.goToMobileView('notes');
+      if (window.app && window.app.ui && window.app.ui.isMobile) {
+        if (window.app.ui.mobileView === 'editor') {
+          window.app.goToMobileView('notes');
           console.log('[CapBridge] Back → editor to notes.');
           return;
         }
-        if (currentApp.ui.mobileView === 'notes') {
-          currentApp.goToMobileView('folders');
+        if (window.app.ui.mobileView === 'notes') {
+          window.app.goToMobileView('folders');
           console.log('[CapBridge] Back → notes to folders.');
           return;
         }
       }
 
-      // 5. Settings Page -> Return to main app
+      // 5. Settings Page -> Return to main app (only when on the root settings list)
       const path = window.location.pathname;
       if (path.includes('settings.html') || path.includes('/pages/')) {
         window.location.href = './index.html';
@@ -296,8 +395,8 @@
     setupKeyboard();
     await setupStatusBar();
 
-    // Safety fallback: ensure splash is dismissed even if app rendering encounters an error
-    setTimeout(() => hideSplash(180), 1000);
+    // Dismiss splash once the WebView has rendered initial paint
+    setTimeout(hideSplash, 300);
     console.log('[CapBridge] ✓ Bridge active and listeners registered.');
   }
 
@@ -313,7 +412,6 @@
     isNative: true,
     platform: window.Capacitor.getPlatform(),
     haptics: haptics,
-    hideSplash: hideSplash,
     openInBrowser: (url) => Browser ? Browser.open({ url, toolbarColor: '#000000' }) : window.open(url, '_system'),
     getNetworkStatus: () => Network ? Network.getStatus() : Promise.resolve({ connected: navigator.onLine }),
     minimizeApp: () => App ? App.minimizeApp() : undefined,

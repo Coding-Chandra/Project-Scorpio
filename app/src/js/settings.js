@@ -1,4 +1,4 @@
-const SUPABASE_URL = 'https://scorpio-native-app.webg.workers.dev/';
+const SUPABASE_URL = 'https://scorpio-native-app.webg.workers.dev';
 const SUPABASE_ANON_KEY = 'sb_publishable_mAXfLlr54xCYHL4aXCnRmg_0BULcwxs';
 
 const supabase = (() => {

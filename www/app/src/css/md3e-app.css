@@ -4,137 +4,10 @@
    ===================================================== */
 
 @import url('https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap');
+@import url("./md3e-theme.css");
 
 /* -----------------------------------------------------
-   1. Core Material You seed + motion tokens
------------------------------------------------------ */
-
-:root[data-ui="md3e"] {
-  /* Motion */
-  --md-fast: 90ms;
-  --md-medium: 180ms;
-  --md-slow: 280ms;
-  --md-ease: cubic-bezier(0.2, 0, 0, 1);
-
-  /* SEED-DERIVED COLORS (NO HARDCODED VALUES) */
-  --accent-color: rgb(var(--md-seed));
-  --accent: rgb(var(--md-seed));
-  --blue: rgb(var(--md-seed));
-
-  /* Text (light) */
-  --text-primary: #1c1b1f;
-  --text-secondary: #5f6368;
-  --text-tertiary: #ffffff;
-
-  /* Tonal surfaces */
-  --md-neutral-base: color-mix(
-    in srgb,
-    #ffffff, 
-    rgb(var(--md-seed)) 5%
-  );
-
-  --md-surface-0:
-    color-mix(
-      in srgb,
-      var(--md-neutral-base) 94%,
-      rgb(var(--md-seed)) 6%
-    );
-
-  --md-surface-1:
-    color-mix(
-      in srgb,
-      var(--md-neutral-base) 97%,
-      rgb(var(--md-seed)) 3%
-    );
-
-  --md-surface-2:
-    color-mix(
-      in srgb,
-      var(--md-neutral-base) 99%,
-      rgb(var(--md-seed)) 1%
-    );
-
-  --editor-bg-glass: rgba(255, 255, 255, 0.6);
-  --list-bg-glass: rgba(255, 255, 255, 0.76);
-  --sidebar-bg-glass: rgba(255, 255, 255, 0.72);
-
-  --md-surface-glass: rgba(255, 255, 255, 0.72);
-  --transparent: var(--md-surface-glass);
-  --accent1: color-mix(
-    in srgb,
-    #f9dedc 86%,
-    rgb(var(--md-seed)) 14%
-  );
-  --md-error-text: #410e0b;
-
-  /* State layers */
-  --active-item-bg: rgba(var(--md-seed), 0.16);
-  --active-item-bg-sidebar: rgba(var(--md-seed), 0.12);
-
-  --border-color: rgba(0,0,0,0.12);
-
-  /* Typography */
-  --font-family: "Google Sans", sans-serif;
-  --icon-stroke: 1.6px;
-}
-
-/* -----------------------------------------------------
-   2. Dark mode – seed driven (uses same seed, just darker surfaces)
------------------------------------------------------ */
-
-:root[data-ui="md3e"][data-theme="dark"] {
-  /* NO ACCENT OVERRIDES HERE */
-
-  --text-primary: #e6e1e5;
-  --text-secondary: #cac4d0;
-
-  --md-neutral-base: color-mix(
-    in srgb,
-    #1c1b1f, 
-    rgb(var(--md-seed)) 5%
-  );
-
-  --md-surface-0:
-    color-mix(
-      in srgb,
-      var(--md-neutral-base) 88%,
-      rgb(var(--md-seed)) 12%
-    );
-
-  --md-surface-1:
-    color-mix(
-      in srgb,
-      var(--md-neutral-base) 92%,
-      rgb(var(--md-seed)) 8%
-    );
-
-  --md-surface-2:
-    color-mix(
-      in srgb,
-      var(--md-neutral-base) 96%,
-      rgb(var(--md-seed)) 4%
-    );
-
-  --editor-bg-glass: rgba(22, 22, 24, 0.6);
-  --list-bg-glass: rgba(20, 20, 22, 0.78);
-  --sidebar-bg-glass: rgba(18, 18, 20, 0.72);
-  --md-surface-glass: rgba(18, 18, 20, 0.72);
-  --transparent: var(--md-surface-glass);
-  --accent1: color-mix(
-    in srgb,
-    #601410 88%,
-    rgb(var(--md-seed)) 12%
-  );
-  --md-error-text: #f9dedc;
-
-  --active-item-bg: rgba(var(--md-seed),0.22);
-  --active-item-bg-sidebar: rgba(var(--md-seed),0.16);
-
-  --border-color: rgba(255,255,255,0.12);
-}
-
-/* -----------------------------------------------------
-   3. Elevation
+   Material You component styles; shared tokens are in md3e-theme.css.
 ----------------------------------------------------- */
 
 :root[data-ui="md3e"] .glass-panel,
@@ -261,29 +134,20 @@
    10. Popups & toolbars (FIXED) V2
 ----------------------------------------------------- */
 :root[data-ui="md3e"] .search-bar{
-  background-color: color-mix(in srgb, var(--md-surface-glass) 86%, rgb(var(--md-seed)) 14%);
+  background-color: var(--bg-secondary);
+  border-color: var(--sep);
+  color: var(--text-main);
 }
 
 
 :root[data-ui="md3e"] .list-header{
-  background-color:
-    color-mix(
-      in srgb,
-      var(--editor-bg-glass) 92%,
-      rgb(var(--md-seed)) 8%
-    );
-    backdrop-filter: blur(var(--blur-s)) saturate(2);
-    -webkit-backdrop-filter: blur(var(--blur-s)) saturate(2);
+    background-color: var(--bg-secondary);
+    border-color: var(--sep);
     padding: 6px 10px;
 }
 
 :root[data-ui="md3e"] .sidebar-actions{
-  background-color:
-    color-mix(
-      in srgb,
-      var(--editor-bg-glass) 70%,
-      rgb(var(--md-seed))
-    );
+  background-color: var(--md-surface-glass);
 }
 
 :root[data-ui="md3e"] .toolbar,
@@ -292,22 +156,36 @@
   left: 2vh;
   right: 2vh;
   border-radius: 22px;
-  background-color: color-mix(in srgb, var(--editor-bg-glass) 90%, rgb(var(--md-seed)));
-  backdrop-filter: blur(var(--blur-s)) saturate(2);
-  -webkit-backdrop-filter: blur(var(--blur-s)) saturate(2);
+  background-color: var(--md-surface-glass);
+  border-color: var(--sep);
+  backdrop-filter: blur(var(--blur-m)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--blur-m)) saturate(1.4);
 }
+
+:root[data-ui="md3e"] .editor-toolbar-glass-layer {
+  display: none;
+}
+
+:root[data-ui="md3e"] .toolbar button {
+  border: 1px solid var(--sep);
+  background: color-mix(in srgb, var(--md-surface-glass) 82%, rgb(var(--md-seed)) 18%);
+  color: var(--text-main);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(var(--blur-s)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--blur-s)) saturate(1.4);
+}
+
+:root[data-ui="md3e"] .toolbar button:hover {
+  background: color-mix(in srgb, var(--md-surface-glass) 70%, rgb(var(--md-seed)) 30%);
+}
+
 :root[data-ui="md3e"] .mobile-nav-left,
 :root[data-ui="md3e"] .mobile-nav-right,
 :root[data-ui="md3e"] .mobile-nav-title {
-  background-color: color-mix(in srgb, var(--editor-bg-glass) 90%, rgb(var(--md-seed)));
-  backdrop-filter: blur(var(--blur-xl)) saturate(2);
-  -webkit-backdrop-filter: blur(var(--blur-xl)) saturate(2);
-}
-
-:root[data-ui="md3e"][data-theme="dark"] .mobile-nav-left,
-:root[data-ui="md3e"][data-theme="dark"] .mobile-nav-right,
-:root[data-ui="md3e"][data-theme="dark"] .mobile-nav-title{
-  background-color: color-mix(in srgb, var(--editor-bg-glass) 90%, rgba(var(--md-seed), 0.14));
+  background-color: var(--md-surface-glass);
+  border-color: var(--sep);
+  backdrop-filter: blur(var(--blur-m)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--blur-m)) saturate(1.4);
 }
 
 :root[data-ui="md3e"] .selection-toolbar,
@@ -322,35 +200,21 @@
   box-shadow:
     0 2px 6px rgba(0,0,0,0.18),
     0 6px 18px rgba(0,0,0,0.14);
-  background-color:
-    color-mix(
-      in srgb,
-      var(--editor-bg-glass) 88%,
-      rgb(var(--md-seed))
-    );
-  backdrop-filter: blur(var(--blur-s)) saturate(2);
-  -webkit-backdrop-filter: blur(var(--blur-s)) saturate(2);
+  background-color: var(--md-surface-glass);
+  border: 1px solid var(--sep);
+  backdrop-filter: blur(var(--blur-m)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--blur-m)) saturate(1.4);
+  backdrop-filter: blur(var(--blur-m)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--blur-m)) saturate(1.4);
 }
 
 
-:root[data-ui="md3e"][data-theme="dark"]
-.selection-toolbar,
-:root[data-ui="md3e"][data-theme="dark"]
-#appDialogOverlay .dialog,
-:root[data-ui="md3e"][data-theme="dark"]
-.dropdown,
-:root[data-ui="md3e"][data-theme="dark"]
-.menu,
-:root[data-ui="md3e"][data-theme="dark"]
-.popover,
-:root[data-ui="md3e"][data-theme="dark"]
-.multi-select-bar {
-  background-color:
-    color-mix(
-      in srgb,
-      var(--editor-bg-glass) 90%,
-      rgba(var(--md-seed), 0.14)
-    );
+:root[data-ui="md3e"][data-theme="dark"] .selection-toolbar,
+:root[data-ui="md3e"][data-theme="dark"] #appDialogOverlay .dialog,
+:root[data-ui="md3e"][data-theme="dark"] .dropdown,
+:root[data-ui="md3e"][data-theme="dark"] .menu,
+:root[data-ui="md3e"][data-theme="dark"] .popover,
+:root[data-ui="md3e"][data-theme="dark"] .multi-select-bar {
   box-shadow:
     0 4px 12px rgba(0,0,0,0.55),
     0 10px 24px rgba(0,0,0,0.45);
@@ -459,47 +323,61 @@ html[data-ui="md3e"][data-theme="dark"] {
 ----------------------------------------------------- */
 
 :root[data-ui="md3e"] .account-dropdown:not(.account-expanded):not(.account-closing) {
-  border: 1px solid color-mix(in srgb, var(--border-color) 72%, rgb(var(--md-seed)) 28%);
-  background: color-mix(in srgb, var(--md-surface-glass) 88%, rgb(var(--md-seed)) 12%);
+  border: 1px solid var(--sep);
+  background: var(--md-surface-glass);
+  backdrop-filter: blur(var(--blur-m)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--blur-m)) saturate(1.4);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 3px 8px rgba(0, 0, 0, 0.08);
 }
 
 :root[data-ui="md3e"] .account-dropdown:not(.account-expanded):not(.account-closing):hover {
-  background: color-mix(in srgb, var(--md-surface-1) 82%, rgb(var(--md-seed)) 18%);
+  background: color-mix(in srgb, var(--md-surface-glass) 84%, rgb(var(--md-seed)) 16%);
 }
 
 :root[data-ui="md3e"] .account-avatar-pill {
-  border-color: color-mix(in srgb, var(--border-color) 65%, rgb(var(--md-seed)) 35%);
-  background: color-mix(in srgb, var(--md-surface-1) 78%, rgb(var(--md-seed)) 22%);
+  border-color: var(--sep);
+  background: var(--md-surface-glass);
   color: var(--text-primary);
 }
 
 :root[data-ui="md3e"] .account-dropdown.account-expanded {
-  border: 1px solid var(--border-color);
-  background: color-mix(in srgb, var(--md-surface-glass) 88%, rgb(var(--md-seed)) 12%);
+  border: 1px solid var(--sep);
+  background: var(--md-surface-glass);
   color: var(--text-primary);
-}
-
-:root[data-ui="md3e"] .notif {
-  border: 1px solid color-mix(in srgb, var(--border-color) 75%, rgb(var(--md-seed)) 25%);
-  border-radius: 20px;
-  color: var(--text-primary);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.16), 0 8px 20px rgba(0, 0, 0, 0.12);
   backdrop-filter: blur(var(--blur-m)) saturate(1.4);
   -webkit-backdrop-filter: blur(var(--blur-m)) saturate(1.4);
 }
 
+:root[data-ui="md3e"] .new-folder-btn {
+  border-radius: 999px;
+  background: var(--md-surface-glass);
+  backdrop-filter: blur(var(--blur-m)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--blur-m)) saturate(1.4);
+}
+
+:root[data-ui="md3e"] .new-folder-btn:hover {
+  background: color-mix(in srgb, var(--md-surface-glass) 84%, rgb(var(--md-seed)) 16%);
+}
+
+:root[data-ui="md3e"] .notif {
+  border: 1px solid var(--sep);
+  border-radius: 16px;
+  background: var(--notification-bg);
+  color: var(--text-main);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.16), 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
 :root[data-ui="md3e"] .notif-close {
-  background: color-mix(in srgb, var(--md-surface-1) 84%, rgb(var(--md-seed)) 16%);
-  color: var(--text-primary);
+  background: var(--bg-main);
+  color: var(--text-main);
 }
 
 :root[data-ui="md3e"] .sidebar-header h2,
 :root[data-ui="md3e"] .list-header,
 :root[data-ui="md3e"] #mobileNavBar,
 :root[data-ui="md3e"] .toolbar {
-  border-color: color-mix(in srgb, var(--border-color) 76%, rgb(var(--md-seed)) 24%);
-  color: var(--text-primary);
+  border-color: var(--sep);
+  color: var(--text-main);
 }
 
 :root[data-ui="md3e"] .sidebar-header h2 {
@@ -511,20 +389,12 @@ html[data-ui="md3e"][data-theme="dark"] {
 :root[data-ui="md3e"] .toolbar,
 :root[data-ui="md3e"] .mobile-nav-left,
 :root[data-ui="md3e"] .mobile-nav-right,
-:root[data-ui="md3e"] .mobile-nav-title {
-  background-color: color-mix(in srgb, var(--md-surface-glass) 88%, rgb(var(--md-seed)) 12%);
-}
-
-:root[data-ui="md3e"][data-theme="dark"] .list-header,
-:root[data-ui="md3e"][data-theme="dark"] #mobileNavBar,
-:root[data-ui="md3e"][data-theme="dark"] .toolbar,
-:root[data-ui="md3e"][data-theme="dark"] .mobile-nav-left,
-:root[data-ui="md3e"][data-theme="dark"] .mobile-nav-right,
-:root[data-ui="md3e"][data-theme="dark"] .mobile-nav-title {
-  background-color: color-mix(in srgb, var(--md-surface-glass) 86%, rgb(var(--md-seed)) 14%);
+:root[data-ui="md3e"] .mobile-nav-title,
+:root[data-ui="md3e"] .search-bar {
+  background-color: var(--md-surface-glass);
 }
 
 :root[data-ui="md3e"] .mobile-nav-title-text {
-  color: var(--text-primary);
+  color: var(--text-main);
   font-weight: 600;
 }

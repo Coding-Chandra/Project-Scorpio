@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5.0, user-scalable=yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-title" content="Notoz">
+    <meta name="theme-color" content="#000000">
+    <title>Notoz for Android — Download Official APK</title>
+    
+    <link rel="icon" type="image/png" href="../assets/icons/logo.png">
+    <link rel="apple-touch-icon" href="../assets/icons/logo.png">
+    <link rel="stylesheet" href="../css/android.css">
+    
+    <script>
+        (function () {
+            const saved = localStorage.getItem("notozApp_theme");
+            const mode = saved === "system"
+                ? (window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+                : (saved || "dark");
+            document.documentElement.setAttribute("data-theme", mode);
+        })();
+    </script>
+</head>
+<body>
+
+<header class="top-nav">
+    <div class="nav-container">
+        <a href="../../index.html" class="back-link" aria-label="Back to Notes">
+            <span aria-hidden="true">&larr;</span> Back to Notes
+        </a>
+        <div class="nav-brand">
+            <span>Notoz</span><span class="nav-brand-dot">•</span>
+            <span class="nav-badge">Android</span>
+        </div>
+        <div class="nav-version">
+            <span class="pill-badge">v2.5.09</span>
+        </div>
+    </div>
+</header>
+
+<main class="auth-container">
+    <section class="auth-card download-card" aria-label="Download Notoz for Android">
+
+        <div class="app-branding">
+            <img src="../assets/icons/logo.png" alt="Notoz Logo" class="app-logo">
+        </div>
+
+        <div class="badge-row">
+            <span class="pill-badge highlight">v2.5.09 Native</span>
+            <span class="pill-badge">Android 8.0+</span>
+            <span class="pill-badge">Zero Trackers</span>
+            <span class="pill-badge">GPLv3 Open Source</span>
+        </div>
+
+        <h1 class="download-title">Download Notoz for Android</h1>
+        <p class="download-subtitle">
+            Experience ultra-smooth 120Hz note-taking, biometric-locked folders, and client-side AES-GCM encryption with complete offline capability.
+        </p>
+
+        <!-- Main Action Buttons -->
+        <div class="download-buttons">
+            <a id="direct-apk-link"
+               class="btn btn-primary"
+               href="https://github.com/Coding-Chandra/scorpio-cap/releases/latest"
+               target="_blank"
+               rel="noopener noreferrer"
+               aria-label="Direct Download Notoz APK">
+                <span class="btn-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
+                    </svg>
+                </span>
+                <span>Download APK (v2.5.09)</span>
+            </a>
+
+            <a class="btn btn-secondary"
+               href="https://github.com/Coding-Chandra/scorpio-cap/releases"
+               target="_blank"
+               rel="noopener noreferrer"
+               aria-label="View releases on GitHub">
+                <span class="btn-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.1-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z"/>
+                    </svg>
+                </span>
+                <span>GitHub Releases</span>
+            </a>
+
+            <button type="button"
+                    class="btn btn-qr-toggle"
+                    id="qrToggleBtn"
+                    aria-expanded="false"
+                    aria-controls="qr-panel">
+                <span class="btn-icon" aria-hidden="true">📱</span>
+                <span id="qrToggleText">Scan with Phone</span>
+            </button>
+        </div>
+
+        <!-- Collapsible QR Code Panel -->
+        <div id="qr-panel" class="qr-panel" hidden>
+            <div class="qr-card">
+                <div class="qr-title">Scan to Download on Android</div>
+                <p class="qr-desc">Point your phone camera or QR reader at this code to open the APK download directly on your device.</p>
+                <div class="qr-code-box">
+                    <div id="qrDirectApk"></div>
+                </div>
+                <div>
+                    <button type="button" id="copyDownloadLinkBtn" class="qr-copy-btn">
+                        📋 Copy Download Link
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feature Highlights -->
+        <h2 class="feature-section-title">Built Exclusively for Android</h2>
+        <div class="feature-grid" aria-label="App features">
+            <div class="feature-card">
+                <div class="feature-icon-badge" aria-hidden="true">⚡</div>
+                <div>
+                    <h3 class="feature-card-title">120Hz &amp; 144Hz Smooth</h3>
+                    <p class="feature-card-desc">Fluid gesture animations with AMOLED pure black backgrounds for maximum battery efficiency.</p>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon-badge" aria-hidden="true">🔒</div>
+                <div>
+                    <h3 class="feature-card-title">Biometric Folder Lock</h3>
+                    <p class="feature-card-desc">Lock sensitive folders behind Android BiometricPrompt fingerprint and face unlock with PIN fallback.</p>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon-badge" aria-hidden="true">🛡️</div>
+                <div>
+                    <h3 class="feature-card-title">AES-GCM 256-Bit</h3>
+                    <p class="feature-card-desc">Zero-knowledge client-side encryption. Note contents and titles stay encrypted on your device.</p>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon-badge" aria-hidden="true">📶</div>
+                <div>
+                    <h3 class="feature-card-title">True Offline First</h3>
+                    <p class="feature-card-desc">Powered by IndexedDB local storage. Create, search, and edit notes anytime without internet.</p>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon-badge" aria-hidden="true">🎨</div>
+                <div>
+                    <h3 class="feature-card-title">Material You &amp; Nothing OS</h3>
+                    <p class="feature-card-desc">Dynamic color theming on Android 13+ with bespoke 66dp monochrome vectors for Nothing OS.</p>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon-badge" aria-hidden="true">🎬</div>
+                <div>
+                    <h3 class="feature-card-title">Cinematic Red "N" Boot</h3>
+                    <p class="feature-card-desc">Bespoke folded red N ribbon launch screen with backlight burst and smooth camera zoom-out.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3-Step Install Guide -->
+        <div class="install-guide">
+            <div class="install-guide-title">
+                <span>📦</span> How to Install the APK
+            </div>
+            <div class="install-steps">
+                <div class="install-step-item">
+                    <div class="step-num">1</div>
+                    <div class="step-text">
+                        <h4>Download</h4>
+                        <p>Tap the APK Download button above or scan the QR code.</p>
+                    </div>
+                </div>
+                <div class="install-step-item">
+                    <div class="step-num">2</div>
+                    <div class="step-text">
+                        <h4>Allow Source</h4>
+                        <p>Tap the downloaded file. If prompted, allow "Install from unknown sources".</p>
+                    </div>
+                </div>
+                <div class="install-step-item">
+                    <div class="step-num">3</div>
+                    <div class="step-text">
+                        <h4>Enjoy Notoz</h4>
+                        <p>Launch the app and enjoy secure, offline-first notes!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </section>
+</main>
+
+<footer class="legal-footer">
+    <div class="footer-content">
+        <div class="footer-links">
+            <a href="./privacy.html">Privacy</a>
+            <a href="./tos.html">Terms</a>
+            <a href="./about.html">About</a>
+            <a href="https://github.com/Coding-Chandra/scorpio-cap" target="_blank" rel="noopener noreferrer">Source Code (GPLv3)</a>
+        </div>
+        <p>&copy; 2026 Notoz. Built for speed, elegance, and true privacy.</p>
+    </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+    (function () {
+        const toggleBtn = document.getElementById('qrToggleBtn');
+        const toggleText = document.getElementById('qrToggleText');
+        const panel = document.getElementById('qr-panel');
+        const qrContainer = document.getElementById('qrDirectApk');
+        const copyBtn = document.getElementById('copyDownloadLinkBtn');
+
+        const downloadUrl = 'https://github.com/Coding-Chandra/scorpio-cap/releases/latest';
+        let qrRendered = false;
+
+        function renderQr() {
+            if (qrRendered) return;
+            if (!window.QRCode || !qrContainer) return;
+
+            qrContainer.innerHTML = '';
+            new QRCode(qrContainer, {
+                text: downloadUrl,
+                width: 180,
+                height: 180,
+                colorDark: '#000000',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.M
+            });
+            qrRendered = true;
+        }
+
+        if (toggleBtn && panel) {
+            toggleBtn.addEventListener('click', function () {
+                const isHidden = panel.hasAttribute('hidden');
+
+                if (isHidden) {
+                    panel.removeAttribute('hidden');
+                    requestAnimationFrame(() => {
+                        panel.classList.add('is-open');
+                    });
+                    toggleBtn.setAttribute('aria-expanded', 'true');
+                    if (toggleText) toggleText.textContent = 'Hide QR Code';
+                    renderQr();
+                } else {
+                    panel.classList.remove('is-open');
+                    toggleBtn.setAttribute('aria-expanded', 'false');
+                    if (toggleText) toggleText.textContent = 'Scan with Phone';
+                    setTimeout(() => {
+                        panel.setAttribute('hidden', '');
+                    }, 480);
+                }
+            });
+        }
+
+        if (copyBtn) {
+            copyBtn.addEventListener('click', function () {
+                navigator.clipboard.writeText(downloadUrl).then(() => {
+                    const orig = copyBtn.textContent;
+                    copyBtn.textContent = '✓ Link Copied!';
+                    setTimeout(() => {
+                        copyBtn.textContent = orig;
+                    }, 2200);
+                }).catch(() => {
+                    copyBtn.textContent = 'Failed to copy';
+                });
+            });
+        }
+    })();
+</script>
+
+</body>
+</html>

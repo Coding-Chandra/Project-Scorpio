@@ -131,7 +131,13 @@ html[data-ui="ios"] .modal-box {
 
 /* Material You Modal */
 html[data-ui="md3e"] .modal-box {
+    background: var(--bg-secondary);
     border-radius: 28px;
+    border: none;
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.4);
+    padding: 24px;
+    width: 90%;
+    max-width: 340px;
 }
 
 /* Nothing OS Modal */
@@ -163,8 +169,24 @@ html[data-ui="ios"] .modal-btn:active:not(:disabled) {
 
 /* Material You Button */
 html[data-ui="md3e"] .modal-btn {
-    background: rgb(var(--md-seed));
-    border-radius: 8px;
+    background: var(--accent);
+    border-radius: 100px;
+    color: #ffffff;
+    font-family: var(--font-family);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+html[data-ui="md3e"] .modal-btn.btn-secondary {
+    background: transparent;
+    color: var(--accent);
+    border: none;
+}
+
+html[data-ui="md3e"] .modal-btn.btn-secondary:active {
+    background: var(--clickable);
 }
 
 /* Nothing OS Button */

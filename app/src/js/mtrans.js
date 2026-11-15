@@ -507,7 +507,7 @@
     origGo = original;
     installBackExit();
 
-    app.goToMobileView = function (view) {
+    app.goToMobileView = function (view, originElement = null) {
       const from = this.ui.mobileView;
 
       const canAnimate =
@@ -532,7 +532,12 @@
       const navSnap = snapshotNav();       // frozen copy of the nav bar before app.js rewrites it
 
       // Opening: measure the origin now, while the old pane is still visible
-      const origin = opening ? openOrigin(view) : null;
+      const sourceRect = opening && view === 'editor' ? measure(originElement) : null;
+      const origin = opening
+        ? (sourceRect
+          ? { rect: sourceRect, radius: radiusOf(originElement, sourceRect) }
+          : openOrigin(view))
+        : null;
       if (opening) origins[view] = origin;
 
       // Run the normal view switch, but without its built-in fade/slide

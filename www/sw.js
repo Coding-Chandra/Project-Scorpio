@@ -1,4 +1,4 @@
-const CACHE_NAME = 'notoj-app-v2.5.00';
+const CACHE_NAME = 'notoj-app-v2.5.09';
 const BASE = self.registration.scope;
 const urlsToCache = [
   './',
@@ -9,6 +9,7 @@ const urlsToCache = [
   // CSS
   'app/src/css/app.css',
   'app/src/css/md3e-app.css',
+  'app/src/css/md3e-theme.css',
   'app/src/css/nthng.css',
   'app/src/css/settings.css',
   'app/src/css/animations.css',

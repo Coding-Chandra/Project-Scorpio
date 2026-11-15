@@ -1271,7 +1271,7 @@ const app = {
         });
     },
 
-    async createNewNote(initialData = {}) {
+    async createNewNote(initialData = {}, sourceButton = null) {
         let targetFolderId = initialData.folder_id || (this.activeFolderId === 'all'
             ? (this.folders[0]?.id || null)
             : this.activeFolderId);
@@ -1329,8 +1329,12 @@ const app = {
                 this.renderNotesList();
                 this.renderEditor();
                 if (this.ui.isMobile || window.innerWidth <= 1024) {
-                    this.ui.mobileView = 'editor';
-                    this.updateLayout();
+                    if (sourceButton) {
+                        this.goToMobileView('editor', sourceButton);
+                    } else {
+                        this.ui.mobileView = 'editor';
+                        this.updateLayout();
+                    }
                 }
                 setTimeout(() => {
                     focusNoteEditorForEditing();
@@ -1386,8 +1390,12 @@ const app = {
         }, 50);
 
         if (this.ui.isMobile || window.innerWidth <= 1024) {
-            this.ui.mobileView = 'editor';
-            this.updateLayout();
+            if (sourceButton) {
+                this.goToMobileView('editor', sourceButton);
+            } else {
+                this.ui.mobileView = 'editor';
+                this.updateLayout();
+            }
         }
 
         setTimeout(() => {

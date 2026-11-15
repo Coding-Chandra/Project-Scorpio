@@ -22,6 +22,7 @@ import android.widget.Toast;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.getcapacitor.BridgeActivity;
 
@@ -119,8 +120,9 @@ public class MainActivity extends BridgeActivity {
                     } catch (Throwable ignored) {}
                 }
 
-                // Native Feature Bridge: Downloads, Monet, Speech, Share
+                // Native Feature Bridge: Downloads, Monet, Speech, Share, System UI
                 webView.addJavascriptInterface(new NotozNativeBridge(), "NotozNativeBridge");
+                webView.addJavascriptInterface(new NotozNativeBridge(), "AndroidSystemUI");
 
                 WebSettings settings = webView.getSettings();
 
@@ -410,6 +412,25 @@ public class MainActivity extends BridgeActivity {
     }
 
     public class NotozNativeBridge {
+        // ── 0. System UI Bridge: Dynamic Status Bar & Navigation Bar Theming ──
+        @JavascriptInterface
+        public void setLightBars(boolean isLight) {
+            runOnUiThread(() -> {
+                try {
+                    Window window = getWindow();
+                    if (window != null) {
+                        WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, window.getDecorView());
+                        if (controller != null) {
+                            controller.setAppearanceLightStatusBars(isLight);
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                controller.setAppearanceLightNavigationBars(isLight);
+                            }
+                        }
+                    }
+                } catch (Exception ignored) {}
+            });
+        }
+
         // ── 1. Downloads Bridge ──
         @JavascriptInterface
         public boolean saveNoteToDownloads(String filename, String content, String mimeType, boolean isBase64) {

@@ -178,6 +178,7 @@
     <link rel="apple-touch-icon" href="./src/assets/icons/logo.png">
     <link rel="stylesheet" href="./src/css/animations.css">
     <link rel="stylesheet" href="./src/css/ui-enhancements.css">
+    <link rel="stylesheet" href="./src/css/android-notification.css">
     <link rel="stylesheet" href="./src/css/app.css">
     <link rel="stylesheet" href="../capacitor-native.css">
     <link rel="stylesheet" href="./src/css/lf-ui.css">
@@ -424,7 +425,7 @@
           </div>
           <div style="display: flex; align-items: flex-end; gap: 2px;">
             <button id="notesViewBtn" class="view-toggle-btn" title="View options" aria-label="View options"></button>
-            <button class="mobile-nav-new-note" onclick="app.createNewNote()" title="New Note" aria-label="New Note">
+            <button class="mobile-nav-new-note" onclick="app.createNewNote({}, this)" title="New Note" aria-label="New Note">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -710,6 +711,7 @@
     <script src="./src/js/hfr-components.js"></script>
     <script>if (typeof window.__NOTOZ_SYNC_HUD === 'function') window.__NOTOZ_SYNC_HUD();</script>
     <script src="./src/js/md3e-enhance.js" defer loading="lazy"></script>
+    <script src="./src/js/switch-to-android-notification.js" defer></script>
     <script>
       window.addEventListener("message", (e) => {
         if (e.origin !== window.location.origin) return;

@@ -31,7 +31,7 @@
       "splashImmersive": true
     },
     "StatusBar": {
-      "style": "DARK",
+      "style": "DEFAULT",
       "backgroundColor": "#00000000",
       "overlaysWebView": true
     },

@@ -101,9 +101,7 @@
 
         /* Per-theme mapping for the shared surface tokens */
         :root[data-ui="md3e"] {
-            --bg-primary: var(--md-surface-1);
-            --bg-secondary: var(--md-surface-0);
-            --notification-bg: var(--md-surface-glass);
+            --bg-primary: var(--bg-main);
         }
         :root[data-ui="nothing"] {
             --bg-primary: var(--bg-main);

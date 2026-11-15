@@ -33,7 +33,7 @@
 
   --lf-blue: #007aff;
 
-  --lf-md3e-seed: #6750a4;
+  --lf-md3e-seed: rgb(var(--md-seed, 103, 80, 164));
 
   --lf-text: #ffffff;
 
@@ -157,11 +157,7 @@
   ========================================================= */
 
 .lf-ui-overlay[data-ui="md3e"] {
-  background: color-mix(
-    in srgb,
-    var(--lf-md3e-seed) 19%,
-    rgba(255, 255, 255, 0.08)
-  );
+  background: color-mix(in srgb, var(--bg-main) 72%, transparent);
 
   backdrop-filter: blur(var(--blur-m)) saturate(1.24);
 
@@ -169,15 +165,11 @@
 }
 
 .lf-ui-overlay[data-ui="md3e"][data-theme="light"] {
-  background: color-mix(
-    in srgb,
-    var(--lf-md3e-seed) 20%,
-    rgba(255, 255, 255, 0.18)
-  );
+  background: color-mix(in srgb, var(--bg-main) 72%, transparent);
 }
 
 .lf-ui-overlay[data-ui="md3e"][data-theme="dark"] {
-  background: color-mix(in srgb, var(--lf-md3e-seed) 23%, rgba(0, 0, 0, 0.1));
+  background: color-mix(in srgb, var(--bg-main) 72%, transparent);
 }
 
 /* =========================================================
@@ -424,19 +416,18 @@
 }
 
 .lf-ui-overlay[data-ui="md3e"] .lf-ui-pin {
-  border: 1px solid color-mix(in srgb, var(--lf-md3e-seed) 34%, transparent);
+  border: 1px solid var(--sep);
 
   border-radius: 18px;
 
-  background: color-mix(in srgb, var(--lf-md3e-seed) 12%, #ffffff);
+  background: var(--bg-secondary);
 
-  color: #1c1b1f;
+  color: var(--text-main);
 }
 
 .lf-ui-overlay[data-ui="md3e"][data-theme="dark"] .lf-ui-pin {
-  background: color-mix(in srgb, var(--lf-md3e-seed) 18%, #1c1b1f);
-
-  color: #e6e1e5;
+  background: var(--bg-secondary);
+  color: var(--text-main);
 }
 
 .lf-ui-overlay[data-ui="nothing"] .lf-ui-pin {
@@ -783,15 +774,15 @@
    ========================================================= */
 
 .lf-ui-overlay[data-ui="md3e"] .lf-ui-key {
-  color: #ffffff;
+  color: var(--text-main);
 
   background: color-mix(
     in srgb,
-    var(--lf-md3e-seed) 29%,
-    rgba(255, 255, 255, 0.11)
+    var(--bg-secondary) 82%,
+    var(--accent) 18%
   );
 
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--sep);
 
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
@@ -810,11 +801,9 @@
 }
 
 .lf-ui-overlay[data-ui="md3e"][data-theme="light"] .lf-ui-key {
-  color: #1c1b1f;
-
-  background: color-mix(in srgb, var(--lf-md3e-seed) 24%, #ffffff);
-
-  border-color: color-mix(in srgb, var(--lf-md3e-seed) 35%, transparent);
+  color: var(--text-main);
+  background: color-mix(in srgb, var(--bg-secondary) 82%, var(--accent) 18%);
+  border-color: var(--sep);
 }
 
 /* M3 Expressive shape families */

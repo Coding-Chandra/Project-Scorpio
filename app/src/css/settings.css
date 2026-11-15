@@ -3,6 +3,7 @@ FONTS & IMPORTS
 ========================================================================== */
 @import url("https://fonts.googleapis.com/css2?family=Geist:ital,wght@0,100..900;1,100..900&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap");
+@import url("./md3e-theme.css");
 
 @font-face {
     font-family: "SF Pro Rounded";
@@ -112,78 +113,6 @@ FONTS & IMPORTS
     --toggle-off: #1b1b1b;
     --toggle-thumb: #f3f3f3;
     --toggle-thumb-off: #1b1b1b;
-}
-
-/* --- Theme Engine Variables: Material You (MD3E) --- */
-:root[data-ui="md3e"] {
-    --font-family: "Google Sans", sans-serif;
-    --md-surface-1: color-mix(
-        in srgb,
-        var(--md-neutral-base) 97%,
-        rgb(var(--md-seed)) 3%
-    );
-    --notification-bg: color-mix(
-        in srgb,
-        rgba(var(--md-seed), 0.6) 20%,
-        var(--bg-main) 60%
-    );
-}
-
-:root[data-ui="md3e"][data-theme="dark"] {
-    --md-surface-1: color-mix(
-        in srgb,
-        var(--md-neutral-base) 92%,
-        rgb(var(--md-seed)) 8%
-    );
-    --notification-bg: color-mix(
-        in srgb,
-        rgba(var(--md-seed), 0.6) 20%,
-        var(--bg-main) 60%
-    );
-}
-
-html[data-ui="md3e"][data-theme="light"] {
-    --base: color-mix(in srgb, #ffffff, rgb(var(--md-seed)) 5%);
-    --bg-main: color-mix(in srgb, var(--base) 96%, rgb(var(--md-seed)) 4%);
-    --bg-secondary: color-mix(
-        in srgb,
-        var(--base) 85%,
-        rgb(var(--md-seed)) 15%
-    );
-    --accent: rgb(var(--md-seed));
-    --border: rgba(0, 0, 0, 0.12);
-    --clickable: color-mix(
-        in srgb,
-        rgba(255, 255, 255, 0.13) 70%,
-        rgb(var(--md-seed)) 30%
-    );
-    --toggle-on: rgba(var(--md-seed));
-    --toggle-off: rgba(0, 0, 0, 0.08);
-    --toggle-thumb-off: rgba(var(--md-seed), 0.24);
-}
-
-html[data-ui="md3e"][data-theme="dark"] {
-    --base: color-mix(in srgb, #1c1b1f, rgb(var(--md-seed)) 5%);
-    --bg-main: color-mix(in srgb, var(--base) 98%, rgb(var(--md-seed)) 2%);
-    --bg-secondary: color-mix(
-        in srgb,
-        var(--base) 80%,
-        rgb(var(--md-seed)) 20%
-    );
-    --bg-active: #2b2930;
-    --text-main: #e6e1e5;
-    --text-dim: #cac4d0;
-    --sep: rgba(255, 255, 255, 0.12);
-    --accent: rgb(var(--md-seed));
-    --border: rgba(255, 255, 255, 0.12);
-    --clickable: color-mix(
-        in srgb,
-        rgba(0, 0, 0, 0.1) 90%,
-        rgb(var(--md-seed)) 10%
-    );
-    --toggle-on: rgba(var(--md-seed));
-    --toggle-off: rgba(0, 0, 0, 0.08);
-    --toggle-thumb-off: rgba(var(--md-seed), 0.24);
 }
 
 /* ==========================================================================
