@@ -429,10 +429,8 @@ const SUPABASE_ANON_KEY = 'your_anon_public_key_here';
 
 You do not need to pay the Google Play \$25 developer fee. You can distribute Notoz completely free with **\$0 registration costs**:
 
-1. **Samsung Galaxy Store** ([seller.samsungapps.com](https://seller.samsungapps.com/)): Free developer account; reaches hundreds of millions of Samsung devices.
-2. **Amazon Appstore** ([developer.amazon.com](https://developer.amazon.com/)): Free developer account; reaches Fire Tablets, Android devices, and Windows 11.
-3. **IzzyOnDroid & F-Droid** ([apt.izzysoft.de](https://apt.izzysoft.de/)): 100% free open-source repository; automatically indexes APK releases directly from your GitHub Releases.
-4. **GitHub Releases:** Tag a release (e.g., `v2.5.09`) and attach the compiled `app-debug.apk` directly for users to download.
+1. **IzzyOnDroid & F-Droid** ([apt.izzysoft.de](https://apt.izzysoft.de/)): 100% free open-source repository; automatically indexes APK releases directly from your GitHub Releases.
+2. **GitHub Releases:** Tag a release (e.g., `v2.5.09`) and attach the compiled `app-debug.apk` directly for users to download.
 
 ---
 
