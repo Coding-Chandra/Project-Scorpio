@@ -1,6 +1,6 @@
 # 🦂 Project Scorpio — PWA & Native Notes App
 
-[![Version](https://img.shields.io/badge/version-2.5.09-D71921.svg?style=flat-square)](package.json)
+[![Version](https://img.shields.io/badge/version-2.5.011-D71921.svg?style=flat-square)](package.json)
 [![Platform](https://img.shields.io/badge/platform-Android%208.0+%20|%20PWA%20|%20Web-000000.svg?style=flat-square)](capacitor.config.json)
 [![Encryption](https://img.shields.io/badge/encryption-AES--GCM%20256--bit-success.svg?style=flat-square)](#-security--encryption)
 [![Display](https://img.shields.io/badge/display-120Hz%20%2F%20144Hz%20AMOLED-blueviolet.svg?style=flat-square)](#-native-android-capabilities)
@@ -99,7 +99,7 @@ View personalized statistics on your profile page:
 ## 🚀 Native & PWA Capabilities
 
 * **Capacitor 8.6 Native Bridge:** Deep integration with Android hardware APIs for biometric auth, tactile haptic feedback, status bar styling, and native camera capture.
-* **Service Worker:** Manages intelligent asset caching (`notoj-app-v2.5.09`) and fetch requests.
+* **Service Worker:** Manages intelligent asset caching (`notoj-app-v2.5.011`) and fetch requests.
 * **Manifest Integration:** Fully installable on Android, iOS, and Desktop.
 * **Native Feel:** Responsive design using dynamic `--vh` variables for mobile viewport accuracy and zero-latency IndexedDB local state.
 * **Manual Update Control:** Users are notified of updates and can choose when to install.
@@ -136,7 +136,7 @@ View personalized statistics on your profile page:
 Scorpio-native/
 ├── android/                         # Native Android Capacitor Project
 │   ├── app/
-│   │   ├── build.gradle             # Android build & version config (v2.5.09)
+│   │   ├── build.gradle             # Android build & version config (v2.5.011)
 │   │   └── src/main/
 │   │       ├── AndroidManifest.xml  # Permissions, biometrics, hardware acceleration
 │   │       ├── java/.../            # Native BridgeActivity entry point
@@ -152,7 +152,7 @@ Scorpio-native/
 │       └── pages/                   # Profile, theme, wallpaper, legal sub-pages
 ├── capacitor.config.json            # Capacitor bridge runtime configuration
 ├── package.json                     # Project manifest and scripts
-├── sw.js                            # Offline Service Worker (notoj-app-v2.5.09)
+├── sw.js                            # Offline Service Worker (notoj-app-v2.5.011)
 └── manifest.json                    # PWA installation manifest
 ```
 
@@ -215,7 +215,7 @@ To push updates to users, update the `CACHE_NAME` version string inside `sw.js`:
 **Example:**
 ```javascript
 // Inside sw.js
-const CACHE_NAME = 'notoj-app-v2.5.09';
+const CACHE_NAME = 'notoj-app-v2.5.011';
 ```
 
 ### Cache Management
@@ -429,10 +429,8 @@ const SUPABASE_ANON_KEY = 'your_anon_public_key_here';
 
 You do not need to pay the Google Play \$25 developer fee. You can distribute Notoz completely free with **\$0 registration costs**:
 
-1. **Samsung Galaxy Store** ([seller.samsungapps.com](https://seller.samsungapps.com/)): Free developer account; reaches hundreds of millions of Samsung devices.
-2. **Amazon Appstore** ([developer.amazon.com](https://developer.amazon.com/)): Free developer account; reaches Fire Tablets, Android devices, and Windows 11.
-3. **IzzyOnDroid & F-Droid** ([apt.izzysoft.de](https://apt.izzysoft.de/)): 100% free open-source repository; automatically indexes APK releases directly from your GitHub Releases.
-4. **GitHub Releases:** Tag a release (e.g., `v2.5.09`) and attach the compiled `app-debug.apk` directly for users to download.
+1. **IzzyOnDroid & F-Droid** ([apt.izzysoft.de](https://apt.izzysoft.de/)): 100% free open-source repository; automatically indexes APK releases directly from your GitHub Releases.
+2. **GitHub Releases:** Tag a release (e.g., `v2.5.011`) and attach the compiled `app-debug.apk` directly for users to download.
 
 ---
 
@@ -470,7 +468,7 @@ You do not need to pay the Google Play \$25 developer fee. You can distribute No
 - [x] Data export with client-side decryption
 
 ### PWA
-- [x] Service worker caching (`notoj-app-v2.5.09`)
+- [x] Service worker caching (`notoj-app-v2.5.011`)
 - [x] Full offline support via IndexedDB
 - [x] Manifest (installable on mobile and desktop)
 - [x] Manual cache updates
