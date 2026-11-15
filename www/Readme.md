@@ -3,6 +3,8 @@
 [![Version](https://img.shields.io/badge/version-2.5.011-D71921.svg?style=flat-square)](package.json)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android%208.0+%20|%20PWA%20|%20Web-000000.svg?style=flat-square)](capacitor.config.json)
+[![Available on GitHub](https://img.shields.io/badge/Available%20on-GitHub-181717.svg?style=flat-square&logo=github)](https://github.com/Coding-Chandra/Scorpio-native/releases)
+[![Available on IzzyOnDroid](https://img.shields.io/badge/Available%20on-IzzyOnDroid-blue.svg?style=flat-square&logo=android)](https://apt.izzysoft.de/)
 [![Encryption](https://img.shields.io/badge/encryption-AES--GCM%20256--bit-success.svg?style=flat-square)](#-security--encryption)
 [![Display](https://img.shields.io/badge/display-120Hz%20%2F%20144Hz%20AMOLED-blueviolet.svg?style=flat-square)](#-native-android-capabilities)
 [![Icons](https://img.shields.io/badge/icons-Material%20You%20%26%20Nothing%20OS-orange.svg?style=flat-square)](#-material-you--nothing-os-themed-icons)
@@ -413,7 +415,7 @@ const SUPABASE_ANON_KEY = 'your_anon_public_key_here';
 
 ---
 
-## 🚀 Deployment & Publishing
+## 🚀 Deployment
 
 ### Web / PWA Deployment
 
@@ -426,12 +428,12 @@ const SUPABASE_ANON_KEY = 'your_anon_public_key_here';
    * Ensure HTTPS is enabled (mandatory for PWA Service Workers and Web Crypto API).
    * Configure CORS headers for your Supabase backend.
 
-### Publishing Android App for Free ($0 Cost)
+### 📲 Available on GitHub & IzzyOnDroid
 
-You do not need to pay the Google Play \$25 developer fee. You can distribute Notoz completely free with **\$0 registration costs**:
+Notoz for Android is available for download on:
 
-1. **IzzyOnDroid & F-Droid** ([apt.izzysoft.de](https://apt.izzysoft.de/)): 100% free open-source repository; automatically indexes APK releases directly from your GitHub Releases.
-2. **GitHub Releases:** Tag a release (e.g., `v2.5.011`) and attach the compiled `app-debug.apk` directly for users to download.
+1. **[GitHub Releases](https://github.com/Coding-Chandra/Scorpio-native/releases):** Download the latest signed APK (`v2.5.011`) directly.
+2. **[IzzyOnDroid & F-Droid](https://apt.izzysoft.de/):** 100% free open-source repository; automatically indexes APK releases directly from GitHub Releases for F-Droid and Neo Store client users.
 
 ---
 

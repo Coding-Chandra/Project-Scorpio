@@ -50,6 +50,7 @@
         <div class="badge-row">
             <span class="pill-badge highlight">v2.5.011 Native</span>
             <span class="pill-badge">Android 8.0+</span>
+            <span class="pill-badge">Available on GitHub &amp; IzzyOnDroid</span>
             <span class="pill-badge">Zero Trackers</span>
             <span class="pill-badge">GPLv3 Open Source</span>
         </div>
@@ -63,7 +64,7 @@
         <div class="download-buttons">
             <a id="direct-apk-link"
                class="btn btn-primary"
-               href="https://github.com/Coding-Chandra/scorpio-cap/releases/latest"
+               href="https://github.com/Coding-Chandra/Scorpio-native/releases/latest"
                target="_blank"
                rel="noopener noreferrer"
                aria-label="Direct Download Notoz APK">
@@ -76,7 +77,7 @@
             </a>
 
             <a class="btn btn-secondary"
-               href="https://github.com/Coding-Chandra/scorpio-cap/releases"
+               href="https://github.com/Coding-Chandra/Scorpio-native/releases"
                target="_blank"
                rel="noopener noreferrer"
                aria-label="View releases on GitHub">
@@ -86,6 +87,19 @@
                     </svg>
                 </span>
                 <span>GitHub Releases</span>
+            </a>
+
+            <a class="btn btn-secondary"
+               href="https://apt.izzysoft.de/"
+               target="_blank"
+               rel="noopener noreferrer"
+               aria-label="Available on IzzyOnDroid">
+                <span class="btn-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                        <path d="M16.6 5.82l1.66-2.88c.12-.22.04-.5-.18-.62a.48.48 0 0 0-.62.18L15.75 5.5C14.6 4.97 13.33 4.67 12 4.67c-1.33 0-2.6.3-3.75.83L6.54 2.5a.48.48 0 0 0-.62-.18.48.48 0 0 0-.18.62L7.4 5.82C4.13 7.6 1.91 10.96 1.67 14.89h20.66c-.24-3.93-2.46-7.29-5.73-9.07zM7 11.33c-.64 0-1.17-.52-1.17-1.17s.52-1.17 1.17-1.17 1.17.52 1.17 1.17-.53 1.17-1.17 1.17zm10 0c-.64 0-1.17-.52-1.17-1.17s.52-1.17 1.17-1.17 1.17.52 1.17 1.17-.53 1.17-1.17 1.17z"/>
+                    </svg>
+                </span>
+                <span>IzzyOnDroid</span>
             </a>
 
             <button type="button"
@@ -205,7 +219,7 @@
             <a href="./privacy.html">Privacy</a>
             <a href="./tos.html">Terms</a>
             <a href="./about.html">About</a>
-            <a href="https://github.com/Coding-Chandra/scorpio-cap" target="_blank" rel="noopener noreferrer">Source Code (GPLv3)</a>
+            <a href="https://github.com/Coding-Chandra/Scorpio-native" target="_blank" rel="noopener noreferrer">Source Code (GPLv3)</a>
         </div>
         <p>&copy; 2026 Notoz. Built for speed, elegance, and true privacy.</p>
     </div>
@@ -220,7 +234,7 @@
         const qrContainer = document.getElementById('qrDirectApk');
         const copyBtn = document.getElementById('copyDownloadLinkBtn');
 
-        const downloadUrl = 'https://github.com/Coding-Chandra/scorpio-cap/releases/latest';
+        const downloadUrl = 'https://github.com/Coding-Chandra/Scorpio-native/releases/latest';
         let qrRendered = false;
 
         function renderQr() {
