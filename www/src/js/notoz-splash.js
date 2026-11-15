@@ -71,41 +71,51 @@
           </div>
         </div>
 
-        <!-- 2. The 3D Folded Ribbon "N" -->
+        <!-- 2. The Dot-Matrix "N" (Notoz Brand Signature) -->
         <div class="notoz-n-wrap">
           <!-- Backlight beam & radiant glow coming through behind the N -->
           <div class="notoz-backlight-burst"></div>
           <div class="notoz-backlight-core"></div>
           <div class="notoz-backlight-streak"></div>
 
-          <svg class="notoz-n-svg" viewBox="0 0 200 300" xmlns="http://www.w3.org/2000/svg">
+          <svg class="notoz-n-svg notoz-dot-matrix-n" viewBox="0 0 200 280" xmlns="http://www.w3.org/2000/svg">
             <defs>
-              <linearGradient id="notozNLeft" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#D71921"/>
-                <stop offset="100%" stop-color="#A01018"/>
-              </linearGradient>
-              <linearGradient id="notozNRight" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#D71921"/>
-                <stop offset="100%" stop-color="#A01018"/>
-              </linearGradient>
-              <linearGradient id="notozNDiag" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#FF2A34"/>
-                <stop offset="40%" stop-color="#D71921"/>
-                <stop offset="100%" stop-color="#8A0010"/>
-              </linearGradient>
-              <filter id="notozNShadow" x="-25%" y="-25%" width="155%" height="155%">
-                <feDropShadow dx="-5" dy="6" stdDeviation="5" flood-color="#000000" flood-opacity="0.88"/>
+              <radialGradient id="notozDotGlow" cx="42%" cy="38%" r="62%">
+                <stop offset="0%" stop-color="#FF525B"/>
+                <stop offset="35%" stop-color="#D71921"/>
+                <stop offset="80%" stop-color="#B30F17"/>
+                <stop offset="100%" stop-color="#730006"/>
+              </radialGradient>
+              <filter id="notozMatrixGlow" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#D71921" flood-opacity="0.6"/>
               </filter>
             </defs>
 
-            <!-- Left vertical ribbon with subtle arc bottom -->
-            <path d="M42,50 L74,50 L74,250 C62,251 52,251.5 42,252 Z" fill="url(#notozNLeft)"/>
+            <!-- 5x7 Dot Matrix Grid for "N" (17 Active Glowing Dots) -->
+            <g class="notoz-matrix-dots" filter="url(#notozMatrixGlow)">
+              <!-- Col 0: Left Vertical Stem (7 dots) -->
+              <circle class="notoz-dot dot-c0-r0" cx="28" cy="25" r="13.5" fill="url(#notozDotGlow)"/>
+              <circle class="notoz-dot dot-c0-r1" cx="28" cy="63.3" r="13.5" fill="url(#notozDotGlow)"/>
+              <circle class="notoz-dot dot-c0-r2" cx="28" cy="101.6" r="13.5" fill="url(#notozDotGlow)"/>
+              <circle class="notoz-dot dot-c0-r3" cx="28" cy="140" r="13.5" fill="url(#notozDotGlow)"/>
+              <circle class="notoz-dot dot-c0-r4" cx="28" cy="178.3" r="13.5" fill="url(#notozDotGlow)"/>
+              <circle class="notoz-dot dot-c0-r5" cx="28" cy="216.6" r="13.5" fill="url(#notozDotGlow)"/>
+              <circle class="notoz-dot dot-c0-r6" cx="28" cy="255" r="13.5" fill="url(#notozDotGlow)"/>
 
-            <!-- Right vertical ribbon with subtle arc bottom -->
-            <path d="M126,50 L158,50 L158,252 C148,251.5 138,251 126,250 Z" fill="url(#notozNRight)"/>
+              <!-- Diagonal (3 dots) -->
+              <circle class="notoz-dot dot-diag-1" cx="64" cy="101.6" r="13.5" fill="url(#notozDotGlow)"/>
+              <circle class="notoz-dot dot-diag-2" cx="100" cy="140" r="13.5" fill="url(#notozDotGlow)"/>
+              <circle class="notoz-dot dot-diag-3" cx="136" cy="178.3" r="13.5" fill="url(#notozDotGlow)"/>
 
-            <!-- Diagonal folded ribbon with 3D drop shadow -->
-            <path d="M42,50 L74,50 L158,252 C146,251.5 136,250.5 126,249 L42,50 Z" fill="url(#notozNDiag)" filter="url(#notozNShadow)"/>
+              <!-- Col 4: Right Vertical Stem (7 dots) -->
+              <circle class="notoz-dot dot-c4-r0" cx="172" cy="25" r="13.5" fill="url(#notozDotGlow)"/>
+              <circle class="notoz-dot dot-c4-r1" cx="172" cy="63.3" r="13.5" fill="url(#notozDotGlow)"/>
+              <circle class="notoz-dot dot-c4-r2" cx="172" cy="101.6" r="13.5" fill="url(#notozDotGlow)"/>
+              <circle class="notoz-dot dot-c4-r3" cx="172" cy="140" r="13.5" fill="url(#notozDotGlow)"/>
+              <circle class="notoz-dot dot-c4-r4" cx="172" cy="178.3" r="13.5" fill="url(#notozDotGlow)"/>
+              <circle class="notoz-dot dot-c4-r5" cx="172" cy="216.6" r="13.5" fill="url(#notozDotGlow)"/>
+              <circle class="notoz-dot dot-c4-r6" cx="172" cy="255" r="13.5" fill="url(#notozDotGlow)"/>
+            </g>
           </svg>
         </div>
 
