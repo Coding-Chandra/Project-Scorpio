@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="288dp"
+    android:height="288dp"
+    android:viewportWidth="288"
+    android:viewportHeight="288">
+
+    <!-- Ambient Atmospheric Red Glow -->
+    <path
+        android:pathData="M144,144 m-130,0 a130,130 0 1,0 260,0 a130,130 0 1,0 -260,0">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:centerX="144"
+                android:centerY="144"
+                android:gradientRadius="130"
+                android:type="radial">
+                <item android:color="#4DD71921" android:offset="0.0"/>
+                <item android:color="#1AD71921" android:offset="0.55"/>
+                <item android:color="#00000000" android:offset="1.0"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Left Vertical Ribbon -->
+    <path
+        android:pathData="M96,64 L124,64 L124,222 C115,223.5 105,224 96,224.5 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="110"
+                android:startY="64"
+                android:endX="110"
+                android:endY="224"
+                android:type="linear">
+                <item android:color="#FFD71921" android:offset="0.0"/>
+                <item android:color="#FFA01018" android:offset="1.0"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Right Vertical Ribbon -->
+    <path
+        android:pathData="M164,64 L192,64 L192,224.5 C183,224 173,223.5 164,222 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="178"
+                android:startY="64"
+                android:endX="178"
+                android:endY="224"
+                android:type="linear">
+                <item android:color="#FFD71921" android:offset="0.0"/>
+                <item android:color="#FFA01018" android:offset="1.0"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 3D Shadow underneath diagonal ribbon on left bar -->
+    <path
+        android:pathData="M96,64 L124,64 L124,145 L96,90 Z"
+        android:fillColor="#CC000000" />
+
+    <!-- Diagonal Ribbon (Folded on top with vibrant highlight) -->
+    <path
+        android:pathData="M96,64 L124,64 L192,224.5 C182,223.8 172,222.8 164,221.5 L96,64 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="96"
+                android:startY="64"
+                android:endX="192"
+                android:endY="224"
+                android:type="linear">
+                <item android:color="#FFFF2A34" android:offset="0.0"/>
+                <item android:color="#FFD71921" android:offset="0.40"/>
+                <item android:color="#FF8A0010" android:offset="1.0"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+</vector>
