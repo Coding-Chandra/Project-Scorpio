@@ -1118,7 +1118,8 @@
         </div>
 
         <script>
-            if ("serviceWorker" in navigator) {
+            const isNativeApp = typeof window.Capacitor !== "undefined" && typeof window.Capacitor.isNativePlatform === "function" && window.Capacitor.isNativePlatform();
+            if (!isNativeApp && "serviceWorker" in navigator) {
                 const swUrl = new URL("../sw.js", location.href).href;
 
                 navigator.serviceWorker
@@ -1234,7 +1235,7 @@
             })();
         </script>
 
-        <script src="./src/js/cache-update.js"></script>
+        <script type="module" src="./src/js/cache-update.js"></script>
         <script src="./src/js/lf-engine.js"></script>
         <script src="./src/js/lf-ui.js"></script>
         <script src="./src/js/settings.js"></script>

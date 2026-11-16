@@ -60,7 +60,7 @@ An intuitive floating toolbar appears upon text selection:
 
 ### 📱 Native Android Experience
 
-* **Cinematic Red "N" Launch Screen:** Custom boot animation featuring an Netflix-inspired folded "N" ribbon in brand crimson red (`#D71921`) with radiant backlight burst and smooth camera zoom-out, engineered specifically for Android native devices.
+* **"N" Launch Screen:** Custom boot animation featuring a folded "N" in brand crimson red (`#D71921`) with radiant backlight burst and smooth camera zoom-out, engineered specifically for Android native devices.
 * **Material You & Nothing OS Icons:** Adaptive icon layers with full dynamic color support on Android 13+ (Material You), paired with high-contrast 66dp monochrome vectors tailored for Nothing OS.
 * **Hierarchical System Back Navigation:** Hardware and gesture back actions intelligently step back through opened modals, bottom sheets, and settings sub-pages before closing the app.
 * **120Hz/144Hz AMOLED Ready:** Edge-to-edge transparent system bars and pure black AMOLED backgrounds optimized for high-refresh-rate displays.
@@ -179,7 +179,7 @@ npx serve .
 # Or open in XAMPP htdocs: http://localhost/scorpio-cap
 ```
 
-3. **Open in Browser:** Navigate to `http://localhost:3000` or `http://localhost/scorpio-cap/app/index.html`.
+3. **Open in Browser:** Navigate to `http://localhost:3000` or `http://localhost/project-scorpio/app/index.html`.
 
 ### Option 2: Android Native Setup
 

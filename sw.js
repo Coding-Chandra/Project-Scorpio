@@ -21,6 +21,7 @@ const urlsToCache = [
   'app/src/js/settings.js',
   'app/src/js/md3e-enhance.js',
   'app/src/js/cache-update.js',
+  'app/src/js/native-update.js',
   'app/src/js/offline-sync.js',
   'app/src/js/lf-engine.js',
   'app/src/js/lf-ui.js',

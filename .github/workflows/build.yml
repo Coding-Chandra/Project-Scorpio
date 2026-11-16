@@ -1,0 +1,79 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  ota:
+    # plain push to main -> web-only OTA bundle
+    if: github.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm ci
+
+      # Version = your SW cache version, bumped however you already do it.
+      # Here: read it straight from sw.js so there's one source of truth.
+      - name: Read version
+        id: v
+        run: |
+          V=$(grep -oP "notoj-app-v\K[0-9.]+" sw.js | head -1)
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+      # adjust to your real build step / web dir
+      - run: npm run build
+      - run: node scripts/make-ota.mjs www ${{ steps.v.outputs.version }} https://github.com/${{ github.repository }}/releases/download/ota
+
+      # Rolling "ota" release holds the latest zip + latest.json.
+      # latest.json URL: https://github.com/<you>/<repo>/releases/download/ota/latest.json
+      - name: Publish OTA release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ota
+          name: OTA (rolling)
+          files: ota-out/*
+
+  apk:
+    # tag v* -> full native build (plugin / permission / Capacitor changes)
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21 }
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync android
+
+      - name: Decode keystore
+        if: env.KEYSTORE_B64 != ''
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > android/app/release.jks
+
+      # versionCode from run number so it always increases.
+      # Needs build.gradle to read these (see notes).
+      - name: Build release APK
+        working-directory: android
+        env:
+          VERSION_CODE: ${{ github.run_number }}
+          VERSION_NAME: ${{ github.ref_name }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleRelease
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: android/app/build/outputs/apk/release/*.apk

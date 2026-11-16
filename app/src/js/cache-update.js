@@ -10,6 +10,8 @@
  * ✅ Total automatic cleanup & self-destruct support
  */
 
+import { isNative, initNativeUpdater, performNativeUpdate } from './native-update.js';
+
 let BUILD_NUMBER = 'Unknown';
 let updateAvailable = false;
 let ACTIVE_CACHE_NAME = null;
@@ -32,6 +34,11 @@ function shouldShowNotifications() {
  * Init
  */
 window.addEventListener('load', async () => {
+  if (isNative()) {
+    await initNativeUpdater();
+    return;
+  }
+
   if (!('serviceWorker' in navigator)) {
     console.warn('[Cache Update] Service Workers not supported');
     return;
@@ -449,6 +456,10 @@ async function manualUpdateCheck() {
  * Perform update
  */
 async function performUpdate() {
+  if (isNative()) {
+    return performNativeUpdate(p => updateProgressUI('downloading', '', { downloadedFiles: p, totalFiles: 100 }));
+  }
+
   try {
     userTriggeredUpdate = true;
 
@@ -701,5 +712,14 @@ function wait(ms) {
     setTimeout(resolve, ms);
   });
 }
+
+// Expose functions globally for UI onclick handlers and external module access
+if (typeof window !== 'undefined') {
+  window.updateButtonUI = updateButtonUI;
+  window.updateProgressUI = updateProgressUI;
+  window.performUpdate = performUpdate;
+  window.manualUpdateCheck = manualUpdateCheck;
+}
+
 
 console.log('[Cache Update] SW-only manager loaded');

@@ -9,3 +9,5 @@ Thumbs.db
 build/
 **/build/
 local.properties
+ota-out/
+*.jks

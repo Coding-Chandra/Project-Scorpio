@@ -3,7 +3,9 @@
   "version": "2.5.011",
   "description": "**Project Scorpio** is a modern Progressive Web Application (PWA) designed for speed, clarity, and offline-first usage. It delivers a minimalist yet powerful note-taking experience with rich editing tools, folder organization, user profiles, and seamless cross-platform support.",
   "main": "sw.js",
+  "nativeVersion": "1",
   "scripts": {
+    "build": "node scripts/copy-web.js",
     "copy-web": "node scripts/copy-web.js",
     "cap:sync": "npm run copy-web && npx cap sync android",
     "cap:open": "npx cap open android",
@@ -28,7 +30,8 @@
     "@capacitor/network": "^8.0.1",
     "@capacitor/preferences": "^8.0.1",
     "@capacitor/splash-screen": "^8.0.2",
-    "@capacitor/status-bar": "^8.0.4"
+    "@capacitor/status-bar": "^8.0.4",
+    "@capgo/capacitor-updater": "^8.54.2"
   },
   "devDependencies": {
     "typescript": "^7.0.2"
