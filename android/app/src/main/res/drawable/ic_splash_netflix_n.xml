@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Notoz Official Dot-Matrix "N" Vector Drawable -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="288dp"
@@ -23,20 +22,56 @@
         </aapt:attr>
     </path>
 
-    <!-- 17-Dot Matrix "N" in Notoz Brand Signature Crimson -->
+    <!-- Left Vertical Ribbon -->
     <path
-        android:name="notoz_dot_matrix_n"
-        android:pathData="M80.0,38.5 a11.5,11.5 0 1,0 0.001,0 Z M80.0,69.8 a11.5,11.5 0 1,0 0.001,0 Z M80.0,101.2 a11.5,11.5 0 1,0 0.001,0 Z M80.0,132.5 a11.5,11.5 0 1,0 0.001,0 Z M80.0,163.8 a11.5,11.5 0 1,0 0.001,0 Z M80.0,195.2 a11.5,11.5 0 1,0 0.001,0 Z M80.0,226.5 a11.5,11.5 0 1,0 0.001,0 Z M112.0,101.2 a11.5,11.5 0 1,0 0.001,0 Z M144.0,132.5 a11.5,11.5 0 1,0 0.001,0 Z M176.0,163.8 a11.5,11.5 0 1,0 0.001,0 Z M208.0,38.5 a11.5,11.5 0 1,0 0.001,0 Z M208.0,69.8 a11.5,11.5 0 1,0 0.001,0 Z M208.0,101.2 a11.5,11.5 0 1,0 0.001,0 Z M208.0,132.5 a11.5,11.5 0 1,0 0.001,0 Z M208.0,163.8 a11.5,11.5 0 1,0 0.001,0 Z M208.0,195.2 a11.5,11.5 0 1,0 0.001,0 Z M208.0,226.5 a11.5,11.5 0 1,0 0.001,0 Z">
+        android:pathData="M96,64 L124,64 L124,222 C115,223.5 105,224 96,224.5 Z">
         <aapt:attr name="android:fillColor">
             <gradient
-                android:startX="80"
-                android:startY="50"
-                android:endX="208"
-                android:endY="238"
+                android:startX="110"
+                android:startY="64"
+                android:endX="110"
+                android:endY="224"
                 android:type="linear">
-                <item android:color="#FFFF3A45" android:offset="0.0"/>
-                <item android:color="#FFD71921" android:offset="0.45"/>
-                <item android:color="#FFA00E16" android:offset="1.0"/>
+                <item android:color="#FFD71921" android:offset="0.0"/>
+                <item android:color="#FFA01018" android:offset="1.0"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Right Vertical Ribbon -->
+    <path
+        android:pathData="M164,64 L192,64 L192,224.5 C183,224 173,223.5 164,222 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="178"
+                android:startY="64"
+                android:endX="178"
+                android:endY="224"
+                android:type="linear">
+                <item android:color="#FFD71921" android:offset="0.0"/>
+                <item android:color="#FFA01018" android:offset="1.0"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 3D Shadow underneath diagonal ribbon on left bar -->
+    <path
+        android:pathData="M96,64 L124,64 L124,145 L96,90 Z"
+        android:fillColor="#CC000000" />
+
+    <!-- Diagonal Ribbon (Folded on top with vibrant highlight) -->
+    <path
+        android:pathData="M96,64 L124,64 L192,224.5 C182,223.8 172,222.8 164,221.5 L96,64 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="96"
+                android:startY="64"
+                android:endX="192"
+                android:endY="224"
+                android:type="linear">
+                <item android:color="#FFFF2A34" android:offset="0.0"/>
+                <item android:color="#FFD71921" android:offset="0.40"/>
+                <item android:color="#FF8A0010" android:offset="1.0"/>
             </gradient>
         </aapt:attr>
     </path>
