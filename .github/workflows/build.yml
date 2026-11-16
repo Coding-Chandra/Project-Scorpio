@@ -74,8 +74,12 @@ jobs:
           npx cap sync android
 
       - name: Decode keystore
-        if: ${{ secrets.KEYSTORE_B64 != '' }}
-        run: echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > android/app/release.jks
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > android/app/release.jks
+          fi
 
       # Build both Debug and Release APKs so app-debug.apk is always available
       - name: Build APKs (Debug & Release)
