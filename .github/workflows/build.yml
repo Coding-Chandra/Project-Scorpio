@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     tags: ['v*']
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -42,7 +43,7 @@ jobs:
 
   apk:
     # tag v* -> full native build (plugin / permission / Capacitor changes)
-    if: github.ref_type == 'tag'
+    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -60,9 +61,8 @@ jobs:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
         run: echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > android/app/release.jks
 
-      # versionCode from run number so it always increases.
-      # Needs build.gradle to read these (see notes).
-      - name: Build release APK
+      # Build both Debug and Release APKs so debug.apk is always available
+      - name: Build APKs (Debug & Release)
         working-directory: android
         env:
           VERSION_CODE: ${{ github.run_number }}
@@ -72,8 +72,22 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           chmod +x ./gradlew
-          ./gradlew assembleRelease
+          ./gradlew assembleDebug assembleRelease
 
-      - uses: softprops/action-gh-release@v2
+      - name: Publish Release with APKs
+        uses: softprops/action-gh-release@v2
         with:
-          files: android/app/build/outputs/apk/release/*.apk
+          name: Notoz ${{ github.ref_name }} - First Public Release
+          body: |
+            ## 🚀 Project Scorpio (Notoz) - First Public Open Source Release
+            
+            Welcome to the first public open-source release of **Project Scorpio (Notoz)**!
+
+            - 🔓 **100% Free & Open Source**: Source code available under GPL v3.
+            - ⚡ **OTA Updates Enabled**: Fast, seamless web app updates without reinstalling.
+            - 📱 **Included Android Builds**:
+              - `app-debug.apk`: Pre-built debug APK ready to install immediately on any Android device.
+              - Release APK: Signed production release.
+          files: |
+            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/apk/release/*.apk

@@ -1,6 +1,6 @@
 {
   "name": "scorpio-native",
-  "version": "2.5.011",
+  "version": "2.5.012",
   "description": "**Project Scorpio** is a modern Progressive Web Application (PWA) designed for speed, clarity, and offline-first usage. It delivers a minimalist yet powerful note-taking experience with rich editing tools, folder organization, user profiles, and seamless cross-platform support.",
   "main": "sw.js",
   "nativeVersion": "1",
