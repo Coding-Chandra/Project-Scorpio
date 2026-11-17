@@ -1,9 +1,9 @@
 # 🦂 Project Scorpio — PWA & Native Notes App
 
-[![Version](https://img.shields.io/badge/version-2.5.012-D71921.svg?style=flat-square)](package.json)
+[![Version](https://img.shields.io/badge/version-2.5.013-D71921.svg?style=flat-square)](package.json)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android%208.0+%20|%20PWA%20|%20Web-000000.svg?style=flat-square)](capacitor.config.json)
-[![Available on GitHub](https://img.shields.io/badge/Available%20on-GitHub-181717.svg?style=flat-square&logo=github)](https://github.com/Coding-Chandra/Scorpio-native/releases)
+[![Available on GitHub](https://img.shields.io/badge/Available%20on-GitHub-181717.svg?style=flat-square&logo=github)](https://github.com/Coding-Chandra/Project-Scorpio/releases)
 [![Available on IzzyOnDroid](https://img.shields.io/badge/Available%20on-IzzyOnDroid-blue.svg?style=flat-square&logo=android)](https://apt.izzysoft.de/)
 [![Available on APKMirror](https://img.shields.io/badge/Available%20on-APKMirror-orange.svg?style=flat-square)](https://www.apkmirror.com/)
 [![Encryption](https://img.shields.io/badge/encryption-AES--GCM%20256--bit-success.svg?style=flat-square)](#-security--encryption)
@@ -103,7 +103,7 @@ View personalized statistics on your profile page:
 ## 🚀 Native & PWA Capabilities
 
 * **Capacitor 8.6 Native Bridge:** Deep integration with Android hardware APIs for biometric auth, tactile haptic feedback, status bar styling, and native camera capture.
-* **Service Worker:** Manages intelligent asset caching (`notoj-app-v2.5.012`) and fetch requests.
+* **Service Worker:** Manages intelligent asset caching (`notoj-app-v2.5.013`) and fetch requests.
 * **Manifest Integration:** Fully installable on Android, iOS, and Desktop.
 * **Native Feel:** Responsive design using dynamic `--vh` variables for mobile viewport accuracy and zero-latency IndexedDB local state.
 * **Manual Update Control:** Users are notified of updates and can choose when to install.
@@ -140,7 +140,7 @@ View personalized statistics on your profile page:
 Scorpio-native/
 ├── android/                         # Native Android Capacitor Project
 │   ├── app/
-│   │   ├── build.gradle             # Android build & version config (v2.5.012)
+│   │   ├── build.gradle             # Android build & version config (v2.5.013)
 │   │   └── src/main/
 │   │       ├── AndroidManifest.xml  # Permissions, biometrics, hardware acceleration
 │   │       ├── java/.../            # Native BridgeActivity entry point
@@ -156,7 +156,7 @@ Scorpio-native/
 │       └── pages/                   # Profile, theme, wallpaper, legal sub-pages
 ├── capacitor.config.json            # Capacitor bridge runtime configuration
 ├── package.json                     # Project manifest and scripts
-├── sw.js                            # Offline Service Worker (notoj-app-v2.5.012)
+├── sw.js                            # Offline Service Worker (notoj-app-v2.5.013)
 └── manifest.json                    # PWA installation manifest
 ```
 
@@ -219,7 +219,7 @@ To push updates to users, update the `CACHE_NAME` version string inside `sw.js`:
 **Example:**
 ```javascript
 // Inside sw.js
-const CACHE_NAME = 'notoj-app-v2.5.012';
+const CACHE_NAME = 'notoj-app-v2.5.013';
 ```
 
 ### Cache Management
@@ -433,7 +433,7 @@ const SUPABASE_ANON_KEY = 'your_anon_public_key_here';
 
 Notoz for Android is available for download on:
 
-1. **[GitHub Releases](https://github.com/Coding-Chandra/Project-Scorpio/releases):** Download the latest signed APK (`v2.5.012`) directly.
+1. **[GitHub Releases](https://github.com/Coding-Chandra/Project-Scorpio/releases):** Download the latest signed APK (`v2.5.013`) directly.
 2. **[IzzyOnDroid & F-Droid](https://apt.izzysoft.de/):** 100% free open-source repository; automatically indexes APK releases directly from GitHub Releases for F-Droid and Neo Store client users.
 3. **[APKMirror](https://www.apkmirror.com/):** Trusted community repository for verified Android application packages.
 
@@ -473,7 +473,7 @@ Notoz for Android is available for download on:
 - [x] Data export with client-side decryption
 
 ### PWA
-- [x] Service worker caching (`notoj-app-v2.5.012`)
+- [x] Service worker caching (`notoj-app-v2.5.013`)
 - [x] Full offline support via IndexedDB
 - [x] Manifest (installable on mobile and desktop)
 - [x] Manual cache updates

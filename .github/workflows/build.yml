@@ -103,16 +103,20 @@ jobs:
       - name: Publish Release with APKs
         uses: softprops/action-gh-release@v2
         with:
-          name: Notoz ${{ github.ref_name }} - First Public Release
+          name: Notoz ${{ github.ref_name }} - Hotfix & Maintenance Release
           body: |
-            ## 🚀 Project Scorpio (Notoz) - First Public Open Source Release
-            
-            Welcome to the first public open-source release of **Project Scorpio (Notoz)**!
+            ## 🚀 Project Scorpio (Notoz) ${{ github.ref_name }}
 
-            - 🔓 **100% Free & Open Source**: Source code available under GPL v3.
-            - ⚡ **OTA Updates Enabled**: Fast, seamless web app updates without reinstalling.
-            - 📱 **Included Android Builds**:
-              - `app-debug.apk`: Pre-built APK ready to install immediately on any Android device.
+            This release addresses runtime issues reported on Android and the web update system:
+
+            ### 🐛 Issues Resolved:
+            - **Native Update Check CORS Error**: Fixed `TypeError: Failed to fetch` during OTA update checks by routing GitHub API calls through native `CapacitorHttp` (bypassing WebView CORS & redirect restrictions).
+            - **Service Worker Native Log Spam**: Bypassed Service Worker checks on native Android (`[Cache Update] No SW registration`), delegating update status directly to the native updater module.
+            - **Dev Tools Target Missing Crash**: Resolved `Error: Dev Tools page target was not found` when navigating to Performance View in settings by ensuring the target container ID (`mobile-dev-performance-view`) is properly defined.
+
+            ### 📦 Binaries Included:
+            - `app-debug.apk`: Pre-built APK for immediate installation and testing on Android.
+            - `app-release.apk`: Production signed release APK.
           files: |
             android/app/build/outputs/apk/debug/*.apk
             android/app/build/outputs/apk/release/*.apk
