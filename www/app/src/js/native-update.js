@@ -34,7 +34,7 @@ const isNative = () => {
   return typeof cap !== 'undefined' && cap !== null && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform();
 };
 
-// "2.5.016" vs "2.5.015" -> true. Compares numerically per segment.
+// "2.5.017" vs "2.5.016" -> true. Compares numerically per segment.
 function isNewer(a, b) {
   const pa = String(a).replace(/^v/, '').split('.').map(Number);
   const pb = String(b).replace(/^v/, '').split('.').map(Number);
