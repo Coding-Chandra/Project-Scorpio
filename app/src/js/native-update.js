@@ -8,8 +8,10 @@
  * Exposes the same globals cache-update.js uses, so settings UI needs no changes.
  */
 
+const GITHUB_REPO = 'Coding-Chandra/Project-Scorpio';
+const API_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases/tags/ota`;
 const MANIFEST_URL =
-  'https://github.com/Coding-Chandra/Project-Scorpio/releases/download/ota/latest.json';
+  `https://github.com/${GITHUB_REPO}/releases/download/ota/latest.json`;
 
 let pending = null;            // { version, url, native, apkUrl }
 let needsFullApk = false;
@@ -69,49 +71,135 @@ async function installedWebVersion() {
   return 'Unknown';
 }
 
-async function fetchManifest(url) {
+async function fetchManifest() {
   const http = getPlugins().CapacitorHttp;
 
-  // 1. Try native CapacitorHttp (bypasses CORS in WebView, handles redirects)
-  if (http && typeof http.get === 'function') {
-    try {
-      const res = await http.get({
-        url: `${url}?t=${Date.now()}`,
-        headers: {
-          'Accept': 'application/json',
-          'Cache-Control': 'no-cache'
+  // 1. Primary Method: Query GitHub API directly for the 'ota' release
+  // api.github.com sends Access-Control-Allow-Origin: * and returns 200 OK directly with NO 302 redirects!
+  try {
+    let apiData = null;
+
+    if (http && typeof http.get === 'function') {
+      try {
+        const res = await Promise.race([
+          http.get({
+            url: `${API_URL}?t=${Date.now()}`,
+            headers: {
+              'Accept': 'application/vnd.github.v3+json',
+              'User-Agent': 'Project-Scorpio',
+              'Cache-Control': 'no-cache'
+            },
+            connectTimeout: 5000,
+            readTimeout: 5000
+          }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('CapacitorHttp timeout')), 6000))
+        ]);
+        if (res && res.status >= 200 && res.status < 300) {
+          apiData = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
         }
-      });
-      if (res && res.status === 404) {
-        console.log('[Native Update] No rolling OTA release found on GitHub (404). Current build is up to date.');
-        return null;
+      } catch (e) {
+        console.warn('[Native Update] Native HTTP API check failed:', e?.message || e);
       }
+    }
+
+    if (!apiData) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 6000);
+      try {
+        const res = await fetch(`${API_URL}?t=${Date.now()}`, {
+          headers: {
+            'Accept': 'application/vnd.github.v3+json',
+            'Cache-Control': 'no-cache'
+          },
+          signal: controller.signal
+        });
+        if (res.ok) {
+          apiData = await res.json();
+        }
+      } catch (e) {
+        console.warn('[Native Update] Browser fetch API check failed:', e?.message || e);
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    if (apiData) {
+      // First check if release body contains valid JSON manifest
+      if (apiData.body) {
+        try {
+          const parsed = JSON.parse(apiData.body.trim());
+          if (parsed && parsed.version) {
+            console.log('[Native Update] Resolved OTA manifest from release body:', parsed.version);
+            return {
+              version: String(parsed.version).replace(/^v/, ''),
+              native: String(parsed.native || '1'),
+              url: parsed.url || `https://github.com/${GITHUB_REPO}/releases/download/ota/notoz-${parsed.version}.zip`
+            };
+          }
+        } catch (_) {}
+      }
+
+      // Check assets for newest notoz-*.zip
+      if (Array.isArray(apiData.assets)) {
+        const bundles = apiData.assets
+          .map(a => {
+            const m = (a.name || '').match(/^notoz-([0-9.]+)\.zip$/);
+            return m ? { version: m[1], url: a.browser_download_url } : null;
+          })
+          .filter(Boolean);
+
+        if (bundles.length > 0) {
+          bundles.sort((a, b) => (isNewer(a.version, b.version) ? -1 : 1));
+          const best = bundles[0];
+          console.log('[Native Update] Resolved OTA manifest from assets:', best.version);
+          return {
+            version: best.version,
+            url: best.url,
+            native: '1'
+          };
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[Native Update] GitHub API check encountered error:', err);
+  }
+
+  // 2. Secondary Fallback: Fetch latest.json directly (handling 301/302 redirects)
+  try {
+    if (http && typeof http.get === 'function') {
+      let res = await Promise.race([
+        http.get({
+          url: `${MANIFEST_URL}?t=${Date.now()}`,
+          headers: { 'Accept': 'application/json', 'Cache-Control': 'no-cache' },
+          connectTimeout: 5000,
+          readTimeout: 5000
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('CapacitorHttp timeout')), 6000))
+      ]);
+
+      if (res && (res.status === 301 || res.status === 302)) {
+        const loc = res.headers?.Location || res.headers?.location;
+        if (loc) {
+          res = await Promise.race([
+            http.get({
+              url: loc,
+              connectTimeout: 5000,
+              readTimeout: 5000
+            }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('CapacitorHttp timeout')), 6000))
+          ]);
+        }
+      }
+
       if (res && res.status >= 200 && res.status < 300) {
         return typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
       }
-      console.log('[Native Update] Manifest returned status:', res?.status);
-      return null;
-    } catch (e) {
-      console.warn('[Native Update] Native HTTP fetch failed, attempting browser fetch fallback:', e);
     }
+  } catch (err) {
+    console.warn('[Native Update] Direct manifest fallback failed:', err);
   }
 
-  // 2. Browser fetch fallback
-  try {
-    const res = await fetch(`${url}?t=${Date.now()}`, { cache: 'no-store' });
-    if (res.status === 404) {
-      console.log('[Native Update] No rolling OTA release found on GitHub (404). Current build is up to date.');
-      return null;
-    }
-    if (!res.ok) {
-      console.log('[Native Update] Manifest returned status:', res.status);
-      return null;
-    }
-    return await res.json();
-  } catch (e) {
-    console.warn('[Native Update] Update check could not reach manifest:', e.message || e);
-    return null;
-  }
+  return null;
 }
 
 export async function initNativeUpdater() {
@@ -138,7 +226,7 @@ export async function initNativeUpdater() {
 
 export async function checkNativeUpdate() {
   try {
-    const latest = await fetchManifest(MANIFEST_URL);
+    const latest = await fetchManifest();
     if (!latest || !latest.version) {
       updateAvailable = false;
       needsFullApk = false;

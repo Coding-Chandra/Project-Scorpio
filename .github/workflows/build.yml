@@ -39,7 +39,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ota
-          name: OTA (rolling)
+          name: OTA (rolling) - v${{ steps.v.outputs.version }}
+          body: |
+            {"version":"${{ steps.v.outputs.version }}","native":"1"}
           files: ota-out/*
           draft: false
           prerelease: false
@@ -107,15 +109,15 @@ jobs:
           body: |
             ## 🚀 Project Scorpio (Notoz) ${{ github.ref_name }}
 
-            This release addresses runtime issues reported on Android and the web update system:
+            This release resolves the OTA update check redirect handling and timeout issues:
 
             ### 🐛 Issues Resolved:
-            - **Native Update Check CORS Error**: Fixed `TypeError: Failed to fetch` during OTA update checks by routing GitHub API calls through native `CapacitorHttp` (bypassing WebView CORS & redirect restrictions).
-            - **Service Worker Native Log Spam**: Bypassed Service Worker checks on native Android (`[Cache Update] No SW registration`), delegating update status directly to the native updater module.
-            - **Dev Tools Target Missing Crash**: Resolved `Error: Dev Tools page target was not found` when navigating to Performance View in settings by ensuring the target container ID (`mobile-dev-performance-view`) is properly defined.
+            - **OTA Update Check Hang / Redirect Resolution**: Switched update manifest discovery to GitHub API release endpoint (`Access-Control-Allow-Origin: *`, 200 OK, zero redirects) and added automatic 301/302 redirect following for CapacitorHttp.
+            - **Modal Timeout Protection**: Guaranteed that update checks cannot freeze on "Checking..." by enforcing strict timeouts on all native and web fetch operations.
+            - **Direct Asset Resolution**: Clients now resolve bundles dynamically from release assets with automatic version sorting.
 
             ### 📦 Binaries Included:
-            - `app-debug.apk`: Pre-built APK for immediate installation and testing on Android.
+            - `app-debug.apk`: Pre-built APK for immediate installation on any Android device.
             - `app-release.apk`: Production signed release APK.
           files: |
             android/app/build/outputs/apk/debug/*.apk

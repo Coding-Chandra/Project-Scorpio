@@ -404,15 +404,24 @@ function updateProgressUI(phase, message = '', extra = {}) {
  * Manual check
  */
 async function manualUpdateCheck() {
+  const confirmBtn = document.getElementById('modal-confirm-btn');
+  const titleEl = document.getElementById('modal-title');
+  const msgEl = document.getElementById('modal-message');
+
   try {
-    const confirmBtn = document.getElementById('modal-confirm-btn');
     if (confirmBtn) {
       confirmBtn.disabled = true;
       confirmBtn.innerText = 'Checking...';
     }
 
     if (isNative()) {
-      await checkNativeUpdate();
+      // 10s timeout guarantee so modal NEVER hangs on "Checking..."
+      const checkPromise = checkNativeUpdate();
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Update check timed out')), 10000)
+      );
+      await Promise.race([checkPromise, timeoutPromise]);
+
       const nativeState = window.__nativeUpdate || {};
       if (nativeState.updateAvailable) {
         if (confirmBtn) {
@@ -423,8 +432,6 @@ async function manualUpdateCheck() {
           };
         }
 
-        const titleEl = document.getElementById('modal-title');
-        const msgEl = document.getElementById('modal-message');
         if (titleEl) titleEl.innerText = 'Update Ready';
         if (msgEl) {
           msgEl.innerText = nativeState.needsFullApk
@@ -432,8 +439,6 @@ async function manualUpdateCheck() {
             : `A new version (v${nativeState.pending?.version || ''}) is available.`;
         }
       } else {
-        const titleEl = document.getElementById('modal-title');
-        const msgEl = document.getElementById('modal-message');
         if (titleEl) titleEl.innerText = 'No Updates';
         if (msgEl) msgEl.innerText = 'Your app is already up to date.';
 
@@ -441,7 +446,9 @@ async function manualUpdateCheck() {
           confirmBtn.disabled = false;
           confirmBtn.innerText = 'Close';
           confirmBtn.onclick = () => {
-            window.closeCustomModal();
+            if (typeof window.closeCustomModal === 'function') {
+              window.closeCustomModal();
+            }
           };
         }
 
@@ -493,14 +500,18 @@ async function manualUpdateCheck() {
     }
 
   } catch (err) {
-    console.error(err);
-    window.closeCustomModal();
-
-    showNotification(
-      'Update Failed',
-      err.message,
-      'error'
-    );
+    console.error('[Cache Update] Update check failed:', err);
+    if (titleEl) titleEl.innerText = 'Update Check Failed';
+    if (msgEl) msgEl.innerText = 'Could not reach update server. Check your connection.';
+    if (confirmBtn) {
+      confirmBtn.disabled = false;
+      confirmBtn.innerText = 'Close';
+      confirmBtn.onclick = () => {
+        if (typeof window.closeCustomModal === 'function') {
+          window.closeCustomModal();
+        }
+      };
+    }
   }
 }
 
