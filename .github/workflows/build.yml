@@ -33,6 +33,12 @@ jobs:
       - run: npm run copy-web
       - run: node scripts/make-ota.mjs www ${{ steps.v.outputs.version }} https://github.com/${{ github.repository }}/releases/download/ota
 
+      - name: Read checksum
+        id: meta
+        run: |
+          CHECKSUM=$(node -e 'console.log(JSON.parse(require("fs").readFileSync("ota-out/latest.json")).checksum || "")')
+          echo "checksum=$CHECKSUM" >> "$GITHUB_OUTPUT"
+
       # Rolling "ota" release holds the latest zip + latest.json.
       # latest.json URL: https://github.com/<you>/<repo>/releases/download/ota/latest.json
       - name: Publish OTA release
@@ -41,7 +47,7 @@ jobs:
           tag_name: ota
           name: OTA (rolling) - v${{ steps.v.outputs.version }}
           body: |
-            {"version":"${{ steps.v.outputs.version }}","native":"1"}
+            {"version":"${{ steps.v.outputs.version }}","native":"1","checksum":"${{ steps.meta.outputs.checksum }}","url":"https://github.com/${{ github.repository }}/releases/download/ota/notoz-${{ steps.v.outputs.version }}.zip"}
           files: ota-out/*
           draft: false
           prerelease: false
@@ -109,12 +115,12 @@ jobs:
           body: |
             ## 🚀 Project Scorpio (Notoz) ${{ github.ref_name }}
 
-            This release resolves the OTA update check redirect handling and timeout issues:
+            This release resolves the OTA download checksum requirement:
 
             ### 🐛 Issues Resolved:
-            - **OTA Update Check Hang / Redirect Resolution**: Switched update manifest discovery to GitHub API release endpoint (`Access-Control-Allow-Origin: *`, 200 OK, zero redirects) and added automatic 301/302 redirect following for CapacitorHttp.
-            - **Modal Timeout Protection**: Guaranteed that update checks cannot freeze on "Checking..." by enforcing strict timeouts on all native and web fetch operations.
-            - **Direct Asset Resolution**: Clients now resolve bundles dynamically from release assets with automatic version sorting.
+            - **Checksum Requirement for Capgo Updater**: Computed SHA-256 checksum during bundle creation and passed it directly to Capgo's download plugin to prevent `Checksum required` download failures.
+            - **OTA Check API Discovery**: Uses GitHub API directly with zero 302 redirects and full CORS support.
+            - **Modal Timeout Protection**: Guaranteed that update checks cannot freeze on "Checking...".
 
             ### 📦 Binaries Included:
             - `app-debug.apk`: Pre-built APK for immediate installation on any Android device.

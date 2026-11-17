@@ -34,7 +34,7 @@ const isNative = () => {
   return typeof cap !== 'undefined' && cap !== null && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform();
 };
 
-// "2.5.015" vs "2.5.014" -> true. Compares numerically per segment.
+// "2.5.016" vs "2.5.015" -> true. Compares numerically per segment.
 function isNewer(a, b) {
   const pa = String(a).replace(/^v/, '').split('.').map(Number);
   const pb = String(b).replace(/^v/, '').split('.').map(Number);
@@ -133,6 +133,7 @@ async function fetchManifest() {
             return {
               version: String(parsed.version).replace(/^v/, ''),
               native: String(parsed.native || '1'),
+              checksum: parsed.checksum || '',
               url: parsed.url || `https://github.com/${GITHUB_REPO}/releases/download/ota/notoz-${parsed.version}.zip`
             };
           }
@@ -155,7 +156,8 @@ async function fetchManifest() {
           return {
             version: best.version,
             url: best.url,
-            native: '1'
+            native: '1',
+            checksum: ''
           };
         }
       }
@@ -192,7 +194,13 @@ async function fetchManifest() {
       }
 
       if (res && res.status >= 200 && res.status < 300) {
-        return typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+        const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+        return {
+          version: String(data.version).replace(/^v/, ''),
+          native: String(data.native || '1'),
+          checksum: data.checksum || '',
+          url: data.url
+        };
       }
     }
   } catch (err) {
@@ -291,10 +299,14 @@ export async function performNativeUpdate(onProgress) {
   }
 
   try {
-    const bundle = await updater.download({
+    const downloadOpts = {
       url: pending.url,
       version: pending.version,
-    });
+    };
+    if (pending.checksum) {
+      downloadOpts.checksum = pending.checksum;
+    }
+    const bundle = await updater.download(downloadOpts);
     onProgress?.(100);
     await updater.set(bundle);   // swaps bundle + reloads the WebView
   } finally {

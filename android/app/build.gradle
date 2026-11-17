@@ -10,8 +10,8 @@ android {
         applicationId "app.notoz.android"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode envVersionCode ? envVersionCode.toInteger() : 20515
-        versionName envVersionName ? envVersionName.replaceFirst("^v", "") : "2.5.015"
+        versionCode envVersionCode ? envVersionCode.toInteger() : 20516
+        versionName envVersionName ? envVersionName.replaceFirst("^v", "") : "2.5.016"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

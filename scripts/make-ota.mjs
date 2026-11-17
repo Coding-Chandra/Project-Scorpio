@@ -1,5 +1,5 @@
 // node scripts/make-ota.mjs <webDir> <version> <baseUrl>
-// e.g.  node scripts/make-ota.mjs www 2.5.015 https://notoz.netlify.app/ota
+// e.g.  node scripts/make-ota.mjs www 2.5.016 https://notoz.netlify.app/ota
 //
 // Output (in ./ota-out):
 //   notoz-<version>.zip   -> contents of webDir, index.html at zip root
@@ -12,6 +12,7 @@
 
 import { execSync } from 'node:child_process';
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 
 const [webDir = 'www', version, baseUrl] = process.argv.slice(2);
@@ -36,10 +37,15 @@ if (process.platform === 'win32') {
   execSync(`zip -r -q "${zipPath}" .`, { cwd: webDir, stdio: 'inherit' });
 }
 
+// Compute SHA-256 checksum of the generated zip bundle (required by Capgo updater)
+const zipBytes = readFileSync(zipPath);
+const checksum = createHash('sha256').update(zipBytes).digest('hex');
+
 const manifest = {
   version,
   native,
+  checksum,
   url: `${baseUrl.replace(/\/$/, '')}/${zipName}`,
 };
 writeFileSync(path.join(out, 'latest.json'), JSON.stringify(manifest, null, 2));
-console.log('OTA bundle ready:', manifest);
+console.log('OTA bundle ready with checksum:', manifest);
