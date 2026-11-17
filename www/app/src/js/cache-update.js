@@ -509,7 +509,23 @@ async function manualUpdateCheck() {
  */
 async function performUpdate() {
   if (isNative()) {
-    return performNativeUpdate(p => updateProgressUI('downloading', '', { downloadedFiles: p, totalFiles: 100 }));
+    const confirmBtn = document.getElementById('modal-confirm-btn');
+    if (confirmBtn) {
+      confirmBtn.disabled = true;
+      confirmBtn.innerText = 'Updating...';
+    }
+    try {
+      updateProgressUI('downloading', 'Downloading update package...', { downloadedFiles: 0, totalFiles: 100 });
+      return await performNativeUpdate(p => updateProgressUI('downloading', 'Downloading update package...', { downloadedFiles: p, totalFiles: 100 }));
+    } catch (err) {
+      console.error('[Native Update] performUpdate failed:', err);
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.innerText = 'Retry';
+      }
+      updateProgressUI('error', err?.message || 'Update failed');
+      return;
+    }
   }
 
   try {

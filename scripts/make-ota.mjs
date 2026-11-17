@@ -1,5 +1,5 @@
 // node scripts/make-ota.mjs <webDir> <version> <baseUrl>
-// e.g.  node scripts/make-ota.mjs www 2.5.013 https://notoz.netlify.app/ota
+// e.g.  node scripts/make-ota.mjs www 2.5.014 https://notoz.netlify.app/ota
 //
 // Output (in ./ota-out):
 //   notoz-<version>.zip   -> contents of webDir, index.html at zip root

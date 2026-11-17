@@ -1,8 +1,8 @@
 /**
  * Notoz App Version Definition
- * Version: 2.5.013
+ * Version: 2.5.014
  */
-const VERSION = '2.5.013';
+const VERSION = '2.5.014';
 
 if (typeof window !== 'undefined') {
   window.__NOTOZ_VERSION = VERSION;

@@ -32,7 +32,7 @@ const isNative = () => {
   return typeof cap !== 'undefined' && cap !== null && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform();
 };
 
-// "2.5.013" vs "2.5.012" -> true. Compares numerically per segment.
+// "2.5.014" vs "2.5.013" -> true. Compares numerically per segment.
 function isNewer(a, b) {
   const pa = String(a).replace(/^v/, '').split('.').map(Number);
   const pb = String(b).replace(/^v/, '').split('.').map(Number);
@@ -58,8 +58,12 @@ async function installedWebVersion() {
   if (app && typeof app.getInfo === 'function') {
     try {
       const info = await app.getInfo();
-      return info.version;          // fall back to the shell's versionName
+      if (info && info.version) return info.version;          // fall back to the shell's versionName
     } catch (_) {}
+  }
+
+  if (typeof window !== 'undefined' && window.__NOTOZ_VERSION) {
+    return window.__NOTOZ_VERSION;
   }
 
   return 'Unknown';
