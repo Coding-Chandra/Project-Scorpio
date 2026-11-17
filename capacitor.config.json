@@ -8,7 +8,10 @@
       "cdn.jsdelivr.net",
       "cdnjs.cloudflare.com",
       "*.supabase.co",
-      "*.supabase.in"
+      "*.supabase.in",
+      "github.com",
+      "*.github.com",
+      "*.githubusercontent.com"
     ],
     "cleartext": false,
     "errorPath": "error.html"
@@ -19,6 +22,9 @@
     "webContentsDebuggingEnabled": false
   },
   "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    },
     "CapacitorUpdater": {
       "autoUpdate": false
     },

@@ -10,7 +10,7 @@
  * ✅ Total automatic cleanup & self-destruct support
  */
 
-import { isNative, initNativeUpdater, performNativeUpdate } from './native-update.js';
+import { isNative, initNativeUpdater, performNativeUpdate, checkNativeUpdate } from './native-update.js';
 
 let BUILD_NUMBER = 'Unknown';
 let updateAvailable = false;
@@ -292,15 +292,20 @@ window.showUpdateCacheModal = () => {
   }
 
   const sourceEl = document.getElementById('updateCacheBtn');
+  const nativeState = window.__nativeUpdate;
+  const hasUpdate = isNative() ? Boolean(nativeState?.updateAvailable) : updateAvailable;
 
-  if (updateAvailable) {
-    const sizeText = pendingUpdateSize?.totalBytes
+  if (hasUpdate) {
+    const sizeText = !isNative() && pendingUpdateSize?.totalBytes
       ? ` (${formatBytes(pendingUpdateSize.totalBytes)})`
+      : '';
+    const verText = isNative() && nativeState?.pending?.version
+      ? ` (v${nativeState.pending.version})`
       : '';
 
     window.openModal(
       'App Update Available',
-      `A new version is ready${sizeText}.`,
+      `A new version is ready${verText || sizeText}.`,
       'Update Now',
       'var(--accent)',
       async () => {
@@ -401,8 +406,55 @@ function updateProgressUI(phase, message = '', extra = {}) {
 async function manualUpdateCheck() {
   try {
     const confirmBtn = document.getElementById('modal-confirm-btn');
-    confirmBtn.disabled = true;
-    confirmBtn.innerText = 'Checking...';
+    if (confirmBtn) {
+      confirmBtn.disabled = true;
+      confirmBtn.innerText = 'Checking...';
+    }
+
+    if (isNative()) {
+      await checkNativeUpdate();
+      const nativeState = window.__nativeUpdate || {};
+      if (nativeState.updateAvailable) {
+        if (confirmBtn) {
+          confirmBtn.disabled = false;
+          confirmBtn.innerText = 'Update Now';
+          confirmBtn.onclick = async () => {
+            await performUpdate();
+          };
+        }
+
+        const titleEl = document.getElementById('modal-title');
+        const msgEl = document.getElementById('modal-message');
+        if (titleEl) titleEl.innerText = 'Update Ready';
+        if (msgEl) {
+          msgEl.innerText = nativeState.needsFullApk
+            ? 'A newer native shell is required. Tap to download the APK.'
+            : `A new version (v${nativeState.pending?.version || ''}) is available.`;
+        }
+      } else {
+        const titleEl = document.getElementById('modal-title');
+        const msgEl = document.getElementById('modal-message');
+        if (titleEl) titleEl.innerText = 'No Updates';
+        if (msgEl) msgEl.innerText = 'Your app is already up to date.';
+
+        if (confirmBtn) {
+          confirmBtn.disabled = false;
+          confirmBtn.innerText = 'Close';
+          confirmBtn.onclick = () => {
+            window.closeCustomModal();
+          };
+        }
+
+        if (shouldShowNotifications()) {
+          showNotification(
+            'Up to Date',
+            'You already have latest version',
+            'success'
+          );
+        }
+      }
+      return;
+    }
 
     await checkForUpdates();
 

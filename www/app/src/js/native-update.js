@@ -65,6 +65,51 @@ async function installedWebVersion() {
   return 'Unknown';
 }
 
+async function fetchManifest(url) {
+  const http = getPlugins().CapacitorHttp;
+
+  // 1. Try native CapacitorHttp (bypasses CORS in WebView, handles redirects)
+  if (http && typeof http.get === 'function') {
+    try {
+      const res = await http.get({
+        url: `${url}?t=${Date.now()}`,
+        headers: {
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache'
+        }
+      });
+      if (res && res.status === 404) {
+        console.log('[Native Update] No rolling OTA release found on GitHub (404). Current build is up to date.');
+        return null;
+      }
+      if (res && res.status >= 200 && res.status < 300) {
+        return typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+      }
+      console.log('[Native Update] Manifest returned status:', res?.status);
+      return null;
+    } catch (e) {
+      console.warn('[Native Update] Native HTTP fetch failed, attempting browser fetch fallback:', e);
+    }
+  }
+
+  // 2. Browser fetch fallback
+  try {
+    const res = await fetch(`${url}?t=${Date.now()}`, { cache: 'no-store' });
+    if (res.status === 404) {
+      console.log('[Native Update] No rolling OTA release found on GitHub (404). Current build is up to date.');
+      return null;
+    }
+    if (!res.ok) {
+      console.log('[Native Update] Manifest returned status:', res.status);
+      return null;
+    }
+    return await res.json();
+  } catch (e) {
+    console.warn('[Native Update] Update check could not reach manifest:', e.message || e);
+    return null;
+  }
+}
+
 export async function initNativeUpdater() {
   if (!isNative()) return false;
 
@@ -89,12 +134,17 @@ export async function initNativeUpdater() {
 
 export async function checkNativeUpdate() {
   try {
-    const res = await fetch(`${MANIFEST_URL}?t=${Date.now()}`, { cache: 'no-store' });
-    if (!res.ok) {
-      console.log('[Native Update] Manifest returned status', res.status);
-      return;
+    const latest = await fetchManifest(MANIFEST_URL);
+    if (!latest || !latest.version) {
+      updateAvailable = false;
+      needsFullApk = false;
+      pending = null;
+      window.__nativeUpdate = { updateAvailable: false, needsFullApk: false, pending: null };
+      if (typeof window.updateButtonUI === 'function') {
+        window.updateButtonUI(false);
+      }
+      return false;
     }
-    const latest = await res.json();
 
     const app = getPlugins().App;
     let shell = '0.0.0';
@@ -114,8 +164,10 @@ export async function checkNativeUpdate() {
     if (typeof window.updateButtonUI === 'function') {
       window.updateButtonUI(updateAvailable);
     }
+    return updateAvailable;
   } catch (e) {
-    console.warn('[Native Update] check failed', e);
+    console.warn('[Native Update] check failed:', e);
+    return false;
   }
 }
 

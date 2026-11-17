@@ -41,6 +41,9 @@ jobs:
           tag_name: ota
           name: OTA (rolling)
           files: ota-out/*
+          draft: false
+          prerelease: false
+          make_latest: false
 
   apk:
     # tag v* -> full native build (plugin / permission / Capacitor changes)
